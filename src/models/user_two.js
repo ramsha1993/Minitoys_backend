@@ -14,7 +14,6 @@ export const User = sequelize.define('users', {
     email: {
         type: DataTypes.STRING,
         allowNull: false,
-        unique: true,
         validate: {
             isEmail: true // Ensures the data is actually an email format
         }

@@ -3,6 +3,7 @@ import { TryCatch } from "../middleware/error.js";
 import { Product } from "../models/product.js";
 import ErrorHandler from "../utils/utilityclass.js";
 import { rm } from "node:fs";
+
 export const createProduct = TryCatch(async (req, res, next) => {
     const { name, price, stock, category, description } = req.body
     const photo = req.file

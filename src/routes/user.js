@@ -6,8 +6,9 @@ import express from "express";
 
 const app = express.Router()
 app.post("/new", createUser)
-app.get("/:id", getSingleUser)
 app.get("/all", getAllUsers)
+
+app.get("/:id", getSingleUser)
 app.put("/:id", upadteUser)
 app.delete("/:id", deleteUser)
 

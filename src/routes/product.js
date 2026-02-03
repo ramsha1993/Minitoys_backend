@@ -1,11 +1,14 @@
 import { Router } from "express";
 import express from "express";
 import { adminOnly } from "../middleware/auth.js";
-import { createProduct, getLatestProducts } from "../controllers/products.js";
+import { createProduct, getLatestProducts, getAllProducts, updateProducts, deleteProducts } from "../controllers/product_Two.js";
 import { singleUpload } from "../middleware/multer.js";
 
 const app = express.Router()
 app.post("/new", singleUpload, createProduct)
 app.get("/latest", getLatestProducts)
+app.get("/all", getAllProducts)
 
+app.put("/:id", singleUpload, updateProducts)
+app.delete("/:id", deleteProducts)
 export default app

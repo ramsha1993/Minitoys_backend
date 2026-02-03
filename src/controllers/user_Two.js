@@ -58,7 +58,6 @@ export const getSingleUser = TryCatch(async (req, res, next) => {
 })
 export const getAllUsers = TryCatch(async (req, res, next) => {
     const users = await User.findAll()
-
     return res.status(200).json({
         success: true,
         users

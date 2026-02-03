@@ -4,6 +4,7 @@ import { errorMiddleware } from "./middleware/error.js";
 import user from './routes/user.js'
 import { User } from './models/user_two.js'
 import product from './routes/product.js'
+import category from './routes/category.js'
 import sequelize from "../db.js";
 import dotenv from "dotenv";
 
@@ -39,6 +40,7 @@ startServer();
 app.get("/", (req, res) => res.send("Hi"));
 app.use('/api/v1/user', user);
 app.use('/api/v1/product', product);
+app.use('/api/v1/category', category);
 app.use(errorMiddleware);
 // 3. START LISTENING ONLY NOW
 app.listen(port, () => {
