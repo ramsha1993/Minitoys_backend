@@ -86,3 +86,14 @@ export const deleteProducts = TryCatch(async (req, res, next) => {
         message: "Product deleted successfully"
     })
 })
+
+export const getSingleProduct = TryCatch(async (req, res, next) => {
+    const { id } = req.params
+    const product = await Product.findByPk(id)
+    if (!product) return next(new ErrorHandler("Invalid product", 400))
+    return res.status(200).json({
+        success: true,
+        product
+    })
+})
+

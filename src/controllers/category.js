@@ -17,3 +17,38 @@ export const getAllCategories = TryCatch(async (req, res, next) => {
         categories
     })
 })
+
+export const getSingleCategory = TryCatch(async (req, res, next) => {
+    const { id } = req.params
+    const category = await Category.findByPk(id)
+    if (!category) return next(new ErrorHandler("Invalid category", 400))
+    return res.status(200).json({
+        success: true,
+        category
+    })
+})
+
+export const updateCategory = TryCatch(async (req, res, next) => {
+    const { id } = req.params
+    const { name } = req.body
+    const category = await Category.findByPk(id)
+    if (!category) return next(new ErrorHandler("Invalid category", 400))
+    if (name !== undefined) category.name = name
+    await category.save()
+    return res.status(200).json({
+        success: true,
+        message: "Category updated successfully"
+    })
+})
+
+export const deleteCategory = TryCatch(async (req, res, next) => {
+    const { id } = req.params
+    const category = await Category.findByPk(id)
+    if (!category) return next(new ErrorHandler("Invalid category", 400))
+    await category.destroy()
+    return res.status(200).json({
+        success: true,
+        message: "Category deleted successfully"
+    })
+})
+

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import express from "express";
 import { adminOnly } from "../middleware/auth.js";
-import { createProduct, getLatestProducts, getAllProducts, updateProducts, deleteProducts } from "../controllers/product_Two.js";
+import { createProduct, getLatestProducts, getAllProducts, updateProducts, deleteProducts, getSingleProduct } from "../controllers/product_Two.js";
 import { singleUpload } from "../middleware/multer.js";
 
 const app = express.Router()
@@ -10,5 +10,6 @@ app.get("/latest", getLatestProducts)
 app.get("/all", getAllProducts)
 
 app.put("/:id", singleUpload, updateProducts)
+app.get("/:id", getSingleProduct)
 app.delete("/:id", deleteProducts)
 export default app
