@@ -7,6 +7,7 @@ import product from './routes/product.js'
 import category from './routes/category.js'
 import sequelize from "../db.js";
 import dotenv from "dotenv";
+import NodeCache from "node-cache";
 
 const app = express();
 dotenv.config();
@@ -36,7 +37,7 @@ const startServer = async () => {
 };
 
 startServer();
-
+export const nodeCache = new NodeCache()
 app.get("/", (req, res) => res.send("Hi"));
 app.use('/api/v1/user', user);
 app.use('/api/v1/product', product);
