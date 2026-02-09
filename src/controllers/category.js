@@ -1,3 +1,4 @@
+import { nodeCache } from "../app.js";
 import { TryCatch } from "../middleware/error.js";
 import { Category } from "../models/category.js";
 
@@ -11,7 +12,15 @@ export const createCategory = TryCatch(async (req, res, next) => {
 })
 
 export const getAllCategories = TryCatch(async (req, res, next) => {
-    const categories = await Category.findAll()
+    let categories;
+    if (nodeCache.has("categories")) {
+        categories = JSON.parse(nodeCache.get("categories"))
+    }
+
+    else {
+        categories = await Category.findAll()
+        nodeCache.set("categories", JSON.stringify(categories))
+    }
     return res.status(200).json({
         success: true,
         categories
