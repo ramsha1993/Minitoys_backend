@@ -1,10 +1,15 @@
 import { Router } from "express";
 // import { deleteUser, getAllUsers, getSingleUser, upadteUser } from "../controllers/user.js";
-import { createUser, getSingleUser, getAllUsers, upadteUser, deleteUser } from "../controllers/user_Two.js";
+import { createUser, getSingleUser, getAllUsers, upadteUser, deleteUser, SignUp, Login } from "../controllers/user_Two.js";
 import express from "express";
 // import { adminOnly } from "../middleware/auth.js";
 
 const app = express.Router()
+// for yser
+app.post("/register", SignUp)
+app.post("/login", Login)
+
+// for admin admin only 
 app.post("/new", createUser)
 app.get("/all", getAllUsers)
 

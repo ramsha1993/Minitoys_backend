@@ -7,6 +7,7 @@ import { Op } from "sequelize";
 import dotenv from "dotenv";
 import { faker } from "@faker-js/faker";
 import { nodeCache } from "../app.js";
+import { InvalidateCache } from "../utils/feature.js";
 dotenv.config();
 export const createProduct = TryCatch(async (req, res, next) => {
     const { name, price, stock, category_id, description } = req.body
@@ -27,6 +28,7 @@ export const createProduct = TryCatch(async (req, res, next) => {
     const products = await Product.create({
         name, price, stock, category_id, description, image: photo?.path
     })
+    await InvalidateCache(products)
     return res.status(201).json({
         success: true,
         message: `Product ${products.name} created successfully`
@@ -63,6 +65,7 @@ export const updateProducts = TryCatch(async (req, res, next) => {
 
 
 
+
     if (!product) {
 
 
@@ -82,15 +85,26 @@ export const updateProducts = TryCatch(async (req, res, next) => {
     if (description !== undefined) product.description = description
     if (photo !== undefined) product.image = photo.path
     await product.save()
+    await InvalidateCache(products)
     return res.status(200).json({
         success: true,
         message: "Product updated successfully"
     })
 })
 
+
 // not the right way to fetch all products
 export const getAdminProducts = TryCatch(async (req, res, next) => {
-    const products = await Product.findAll()
+    let products;
+    if (nodeCache.has("adminProducts")) {
+        products = JSON.parse(nodeCache.get("adminProducts"))
+        console.log("Key Exists")
+    }
+    else {
+        products = await Product.findAll()
+        console.log("Key Not Exists")
+        nodeCache.set("adminProducts", JSON.stringify(products))
+    }
     return res.status(200).json({
         success: true,
         products
@@ -139,6 +153,7 @@ export const deleteProducts = TryCatch(async (req, res, next) => {
     const product = await Product.findByPk(id)
     if (!product) return next(new ErrorHandler("Invalid product", 400))
     await product.destroy()
+    InvalidateCache(product)
     return res.status(200).json({
         success: true,
         message: "Product deleted successfully"
@@ -146,8 +161,15 @@ export const deleteProducts = TryCatch(async (req, res, next) => {
 })
 
 export const getSingleProduct = TryCatch(async (req, res, next) => {
+    let product;
     const { id } = req.params
-    const product = await Product.findByPk(id)
+    if (nodeCache.has(`product-${id}`)) {
+        product = JSON.parse(nodeCache.get(`product-${id}`))
+    }
+    else {
+        product = await Product.findByPk(id)
+        nodeCache.set(`product-${id}`, JSON.stringify(product))
+    }
     if (!product) return next(new ErrorHandler("Invalid product", 400))
     return res.status(200).json({
         success: true,

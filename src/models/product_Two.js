@@ -1,10 +1,28 @@
 import sequelize from "../../db.js"
 import { DataTypes } from "sequelize"
+
+import SequelizeSlugify from 'sequelize-slugify';
 export const Product = sequelize.define("Product", {
+
+
+    user_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: "users",
+            key: "id"
+        },
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE"
+    },
     name: {
         type: DataTypes.STRING,
         allowNull: false
 
+    },
+    slug: {
+        type: DataTypes.STRING,
+        // unique: true // Importan
     },
     price: {
         type: DataTypes.FLOAT,
@@ -33,14 +51,20 @@ export const Product = sequelize.define("Product", {
         },
         onUpdate: "CASCADE",
         onDelete: "RESTRICT" // prevent deleting category if products exist
-    }
+    },
+
 },
     {
         timestamps: true,
         // paranoid: true,
         tableName: 'product',
     })
-
+// Automatically create slug from name
+// Automatically generate slug from name
+SequelizeSlugify.slugifyModel(Product, {
+    source: ['name'],
+    overwrite: false // do not overwrite slug if it already exists
+});
 
 
 

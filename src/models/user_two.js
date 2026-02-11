@@ -23,7 +23,7 @@ export const User = sequelize.define('users', {
         allowNull: false
     },
     role: {
-        type: DataTypes.ENUM("admin", "user"),
+        type: DataTypes.ENUM("admin", "user", "vendor"),
         allowNull: false,
         defaultValue: "user" // Fixed the case-sensitivity here
     },
