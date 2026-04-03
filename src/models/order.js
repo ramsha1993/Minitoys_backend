@@ -14,51 +14,7 @@ export const Order = sequelize.define("order", {
         onUpdate: "CASCADE",
         onDelete: "CASCADE"
     },
-    address: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
-    city: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
-    state: {
-        type: DataTypes.STRING,
-        allowNull: false
 
-    },
-    PhoneNumber: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
-    country: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
-    pinCode: {
-        type: DataTypes.STRING,
-        allowNull: false
-    },
-    subtotal: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-    },
-    tax: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-    },
-    shippingCharges: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-    },
-    discount: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-    },
-    totalAmount: {
-        type: DataTypes.INTEGER,
-        allowNull: false
-    },
 
     pay_method: {
         type: DataTypes.STRING,
@@ -69,7 +25,27 @@ export const Order = sequelize.define("order", {
         allowNull: false,
         defaultValue: "Pending"
     },
+    subTotal: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    shippingFee: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    },
+    totalAmount: {
+        type: DataTypes.INTEGER,
+        allowNull: true
+    }
 
+    , address_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: "address",
+            key: "id"
+        }
+    },
 
 
 }, {

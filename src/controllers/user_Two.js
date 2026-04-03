@@ -14,6 +14,7 @@ export const Login = TryCatch(async (req, res, next) => {
     let user;
     const { email, password } = req.body
     user = await User.findOne({ where: { email } })
+    if (user.role === "vendor" || user.role === "admin") return next(new ErrorHandler("You are not authorized to perform this action", 400))
     console.log("user", user.password, password)
     if (!user) return next(new ErrorHandler("Invalid user", 400))
     if (user.status !== true && user.status !== 1)

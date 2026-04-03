@@ -6,51 +6,44 @@ import { Cartitems } from "../models/cartitems.js";
 import { Product } from "../models/product_Two.js";
 import { OrderItems } from "../models/orderitems.js";
 import { nodeCache } from "../app.js";
+import { Address } from "../models/address.js";
+import { where } from "sequelize";
 
 
 
 export const newOrder = TryCatch(async (req, res, next) => {
     const {
-        address,
-        city,
-        state,
-        PhoneNumber,
-        country,
-        pinCode,
-        subtotal,
-        tax,
-        shippingCharges,
-        discount,
         totalAmount,
-        pay_method,
-        status,
+        shippingFee,
+        subTotal,
+        status
+        , pay_method,
+        address_id,
         cart_item_ids,
     } = req.body;
 
     if (
-        !address || !city || !state || !PhoneNumber || !country ||
-        !pinCode || !subtotal || !tax || !shippingCharges ||
-        !discount || !totalAmount || !pay_method || !Array.isArray(cart_item_ids) || cart_item_ids.length === 0
+
+        !subTotal || !shippingFee || !totalAmount || !pay_method || !Array.isArray(cart_item_ids) || cart_item_ids.length === 0
+        || !Array.isArray(cart_item_ids) || cart_item_ids.length === 0
     ) {
         return next(new ErrorHandler("Please enter all fields", 400));
     }
     const user_id = req.user.id
-
+    const address = await Address.findOne({ where: { user_id: user_id } })
+    console.log("address", address)
+    if (!address) {
+        return next(new ErrorHandler("Address not found", 404));
+    }
     // 1️⃣ Create Order
     const order = await Order.create({
         user_id,
-        address,
-        city,
-        state,
-        PhoneNumber,
-        country,
-        pinCode,
-        subtotal,
-        tax,
-        shippingCharges,
-        discount,
+        subTotal,
+        shippingFee,
         totalAmount,
         pay_method,
+        address_id: address.id,
+        cart_item_ids,
         status
     });
 
@@ -62,15 +55,17 @@ export const newOrder = TryCatch(async (req, res, next) => {
     if (!cartItems.length) {
         return next(new ErrorHandler("No cart items found", 404));
     }
-
+    const Productitems = await Product.findAll({
+        where: { id: cartItems.map(item => item.product_id) }
+    })
     // 3️⃣ Create OrderItems from CartItems
     const orderItemsData = cartItems.map(item => ({
         order_id: order.id,
-        name: item.name,
-        image: item.image,
+        name: Productitems.find(product => product.id === item.product_id).name,
+        image: Productitems.find(product => product.id === item.product_id).image,
         product_id: item.product_id,
         quantity: item.quantity,
-        price: item.price
+        price: Productitems.find(product => product.id === item.product_id).price
     }));
 
     await OrderItems.bulkCreate(orderItemsData);
@@ -119,21 +114,21 @@ export const myOrders = TryCatch(async (req, res, next) => {
     if (!id) {
         return next(new ErrorHandler("Please enter user id", 400));
     }
-    const cacheKey = `my-orders-${id}`;
-    if (nodeCache.has(cacheKey)) {
-        order = JSON.parse(nodeCache.get(cacheKey))
-        console.log(" cache order", order)
-    }
-    else {
-        order = await Order.findAll({
-            where: { user_id: id },
-            include: [OrderItems]
-        })
-        nodeCache.set(cacheKey, JSON.stringify(order))
+    // const cacheKey = `my-orders-${id}`;
+    // if (nodeCache.has(cacheKey)) {
+    //     order = JSON.parse(nodeCache.get(cacheKey))
+    //     console.log(" cache order", order)
+    // }
+    // else {
+    order = await Order.findAll({
+        where: { user_id: id },
+        include: [OrderItems]
+    })
+    // nodeCache.set(cacheKey, JSON.stringify(order))
 
-        console.log("order", order)
+    console.log("order", order)
 
-    }
+    // }
     return res.status(200).json({
         success: true,
         order

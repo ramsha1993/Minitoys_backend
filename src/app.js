@@ -15,9 +15,11 @@ import { Order } from "./models/order.js";
 import { OrderItems } from "./models/orderitems.js";
 import "./models/association.js";
 import cors from "cors";
+import address from './routes/address.js'
 import path from "path";
 const app = express();
 const __dirname = path.resolve();
+import { client } from './utils/elastic.js';
 
 
 dotenv.config();
@@ -27,6 +29,21 @@ app.use(morgan('dev'))
 app.use(urlencoded({ extended: true }))
 const port = process.env.PORT || 4000
 // connectDb()
+
+
+
+// Test connection
+async function testElastic() {
+    try {
+        await client.ping();
+        console.log('Elasticsearch is running');
+    } catch (error) {
+        console.error('Elasticsearch is down:', error.message);
+    }
+}
+
+
+
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 const startServer = async () => {
     try {
@@ -57,8 +74,9 @@ app.use('/api/v1/product', product);
 app.use('/api/v1/category', category);
 app.use('/api/v1/order', order);
 app.use('/api/v1/cart', cart);
+app.use('/api/v1/address', address);
 app.use(errorMiddleware);
-
+testElastic();
 // 3. START LISTENING ONLY NOW
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);

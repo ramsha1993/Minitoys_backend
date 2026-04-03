@@ -5,7 +5,7 @@ import { Product } from "./product_Two.js"
 export const OrderItems = sequelize.define("orderitems", {
     order_id: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: true,
         references: {
             model: "order",
             key: "id"

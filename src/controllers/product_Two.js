@@ -3,14 +3,24 @@ import { TryCatch } from "../middleware/error.js";
 import { Product } from "../models/product_Two.js";
 import ErrorHandler from "../utils/utilityclass.js";
 import { rm } from "node:fs";
-import { Op } from "sequelize";
 import dotenv from "dotenv";
 import { faker } from "@faker-js/faker";
+import slugify from 'slugify';
 import { nodeCache } from "../app.js";
 import { InvalidateCache } from "../utils/feature.js";
+import { client } from '../utils/elastic.js'
+import sequelize from "../../db.js";
+import { Op, literal } from "sequelize"; // <-- this is the class
+
+
 dotenv.config();
+
+
+
+
+
 export const createProduct = TryCatch(async (req, res, next) => {
-    const { name, price, stock, category_id, description } = req.body
+    const { name, price, stock, category_id, description, user_id } = req.body
     const photo = req.file
     console.log("photo", photo)
     const product = await Product.findOne({ where: { name } })
@@ -26,7 +36,7 @@ export const createProduct = TryCatch(async (req, res, next) => {
 
     }
     const products = await Product.create({
-        name, price, stock, category_id, description, image: photo?.path
+        name, price, stock, category_id, description, image: photo?.path, user_id
     })
     await InvalidateCache(products)
     return res.status(201).json({
@@ -93,7 +103,6 @@ export const updateProducts = TryCatch(async (req, res, next) => {
 })
 
 
-// not the right way to fetch all products
 export const getAdminProducts = TryCatch(async (req, res, next) => {
     let products;
     if (nodeCache.has("adminProducts")) {
@@ -135,7 +144,11 @@ export const getAllProducts = TryCatch(async (req, res, next) => {
     // }
     const sortOrder = req.query.sort === 'sort' ? 'high-to-low' : 'ASC';
 
-    const products = await Product.findAndCountAll({ where: baseQuery, limit: limit, offset: skip, order: [['price', sortOrder]] })
+    const products = await Product.findAndCountAll({
+        where: baseQuery,
+        limit: limit, offset: skip,
+        order: [['price', sortOrder]]
+    })
     console.log("products", products)
     return res.status(200).json({
 
@@ -162,13 +175,13 @@ export const deleteProducts = TryCatch(async (req, res, next) => {
 
 export const getSingleProduct = TryCatch(async (req, res, next) => {
     let product;
-    const { id } = req.params
-    if (nodeCache.has(`product-${id}`)) {
-        product = JSON.parse(nodeCache.get(`product-${id}`))
+    const { slug } = req.params
+    if (nodeCache.has(`product-${slug}`)) {
+        product = JSON.parse(nodeCache.get(`product-${slug}`))
     }
     else {
-        product = await Product.findByPk(id)
-        nodeCache.set(`product-${id}`, JSON.stringify(product))
+        product = await Product.findOne({ where: { slug } })
+        nodeCache.set(`product-${slug}`, JSON.stringify(product))
     }
     if (!product) return next(new ErrorHandler("Invalid product", 400))
     return res.status(200).json({
@@ -179,13 +192,16 @@ export const getSingleProduct = TryCatch(async (req, res, next) => {
 export const generateRandomProducts = async (count) => {
     const products = []
     for (let i = 0; i < count; i++) {
+        const name = faker.commerce.productName()
+        const slug = slugify(name + '-', { lower: true });
         const product = {
-            name: faker.commerce.productName(),
+            name,
+            slug,
             price: faker.commerce.price({ min: 1500, max: 10000 }),
             stock: faker.number.int({ min: 10, max: 100 }),
             category_id: faker.number.int({ min: 1, max: 5 }),
             description: faker.commerce.productDescription(),
-            image: "uploads/1d7e139e-82a6-485b-83a3-f817019fdf30.webp"
+            image: `https://picsum.photos/seed/${i}/400/400.webp`,
         }
         products.push(product)
     }
@@ -196,12 +212,90 @@ export const generateRandomProducts = async (count) => {
 }
 // generateRandomProducts(40)
 
-// const delteteAllproducts = async () => {
-//     const products = await Product.findAll({ offset: 10 })
-//     console.log("products", products)
-//     for (let i = 0; i < products.length; i++) {
-//         await products[i].destroy()
-//     }
-//     console.log("products deleted successfully", products)
-// }
+const delteteAllproducts = async () => {
+    const products = await Product.findAll({ offset: 10 })
+    console.log("products", products)
+    for (let i = 0; i < products.length; i++) {
+        await products[i].destroy()
+    }
+    console.log("products deleted successfully", products)
+}
 // delteteAllproducts()
+
+const getproducts = async () => {
+    products = await Product.findAll({})
+    console.log("products", products.map(p => p.toJSON()))
+}
+getproducts()
+
+let products;
+
+async function insertProducts() {
+
+    products = await Product.findAll({})
+    const bulkOps = products.flatMap(product => [
+        { index: { _index: 'product', _id: product.id } },
+        product.toJSON() // converts Sequelize model to plain object
+    ]);
+    await client.bulk({ operations: bulkOps, refresh: true });
+    console.log('✅ Products indexed into Elastic Cloud');
+}
+
+
+
+insertProducts();
+
+// async function DeleteElastic() {
+//     products = await Product.findAll({})
+//     await client.deleteByQuery({
+//         index: 'product',
+//         query: {
+//             match_all: {}
+//         },
+//         refresh: true
+//     });
+
+// }
+
+// DeleteElastic()
+
+
+export const searchProducts = TryCatch(async (req, res) => {
+    const { q } = req.query;
+
+    if (!q) return res.json([]);
+
+    try {
+        const result = await client.search({
+            index: "product",
+            query: { match_phrase_prefix: { name: q } },
+            size: 10
+        });
+        console.log("result", result)
+        const suggestions = result.hits.hits.map(hit => hit._source);
+        return res.status(200).json({
+            success: true,
+            message: "Search query",
+            suggestions
+        })
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Elasticsearch search failed" });
+    }
+});
+
+
+// Delete all products not referenced in orderitems
+// Delete all products not referenced in orderitems
+// await Product.destroy({
+//     where: {
+//         id: {
+//             [Op.notIn]: literal(`(
+//         SELECT DISTINCT product_id FROM orderitems
+//         UNION
+//         SELECT DISTINCT product_id FROM cartitems
+//       )`)
+//         },
+
+//     }
+// });

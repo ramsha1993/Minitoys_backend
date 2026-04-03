@@ -29,7 +29,8 @@ export const cart = TryCatch(async (req, res, next) => {
     // console.log(`Request items, user_id ${user_id}, product_id ${product_id},image ${image},quantity ${quantity}, price ${price},name ${name}`)
     const Cart_items = await Cartitems.findOne({ where: { cart_id: cart_id, product_id: product_id } })
     if (Cart_items) {
-        Cart_items.quantity += Number(quantity)
+        Cart_items.quantity += 1;
+        console.log("Cart items", Cart_items.quantity += quantity)
         await Cart_items.save();
         return res.status(200).json({
             success: true,
@@ -62,6 +63,7 @@ export const getCartitems = TryCatch(async (req, res, next) => {
         const products = product.find((p) => p.id === item.product_id);
         console.log("product id", products)
         return {
+            id: item.id,
             product_id: item.product_id,
             quantity: item.quantity,
             name: products?.name,
@@ -100,11 +102,33 @@ export const getCartCount = TryCatch(async (req, res, next) => {
     });
 });
 
+export const deleteCartItems = TryCatch(async (req, res, next) => {
+    const id = req.params.id;
+    const cartItems = await Cartitems.findOne({ where: { id: id } })
+    if (!cartItems) {
+        return next(new ErrorHandler("Cart items not found", 404))
+    }
+    await cartItems.destroy()
+    return res.status(200).json({
+        success: true,
+        message: "Cart items deleted successfully"
+    })
 
 
+})
 
-// user clicked on add to cart button
-// then check first does the user exist logged in
-// then return cart id
-// now cartitems needs the cart id
-// 
+export const updateCartQuantity = TryCatch(async (req, res, next) => {
+    const { id } = req.params
+    const { quantity } = req.body
+    const items = await Cartitems.findOne({ where: { id: id } })
+    if (!items) {
+        return next(ErrorHandler("Cartitems not found", 404))
+    }
+    items.quantity = quantity
+    await items.save()
+    return res.status(200).json({
+        success: true,
+        message: "Cart quantity updated successfully"
+    })
+
+})

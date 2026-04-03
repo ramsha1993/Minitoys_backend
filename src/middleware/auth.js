@@ -22,6 +22,7 @@ export const authMiddleware = TryCatch(async (req, res, next) => {
     const token = authHeader.split(' ')[1];
     const decodedToken = jwt.verify(token, process.env.JWT_TOKEN)
     console.log("decodedToken", decodedToken)
+    if (decodedToken.role === "vendor") return next(new ErrorHandler("You are not authorized to perform this action", 400));
     req.user = decodedToken
     return next()
 })

@@ -1,5 +1,6 @@
 import sequelize from "../../db.js"
 import { DataTypes } from "sequelize"
+import { client } from '../utils/elastic.js'
 
 import SequelizeSlugify from 'sequelize-slugify';
 export const Product = sequelize.define("Product", {
@@ -67,4 +68,27 @@ SequelizeSlugify.slugifyModel(Product, {
 });
 
 
+Product.afterCreate(async (product) => {
+    await client.index({
+        index: "product",
+        id: product.id,
+        document: product.toJSON()
 
+    })
+})
+Product.afterUpdate(async (product) => {
+    await client.index({
+        index: "product",
+        id: product.id,
+        document: product.toJSON()
+
+    })
+})
+Product.afterDestroy(async (product) => {
+    await client.delete({
+        index: product,
+        id: product.id,
+        document: product.toJSON()
+    })
+
+})
