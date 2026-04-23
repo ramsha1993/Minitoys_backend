@@ -8,36 +8,50 @@ import { faker } from "@faker-js/faker";
 import slugify from 'slugify';
 import { nodeCache } from "../app.js";
 import { InvalidateCache } from "../utils/feature.js";
-import { client } from '../utils/elastic.js'
+// import { client } from '../utils/elastic.js'
 import sequelize from "../../db.js";
 import { Op, literal } from "sequelize"; // <-- this is the class
-
+import fs from 'fs'
+import { User } from "../models/user_two.js";
 
 dotenv.config();
 
 
 
 
-
 export const createProduct = TryCatch(async (req, res, next) => {
-    const { name, price, stock, category_id, description, user_id } = req.body
-    const photo = req.file
-    console.log("photo", photo)
+const { name, price, stock, category_id, description } = req.body
+const user_id = req.user.id
+console.log("name, price, stock, category_id, description",name, price, stock, category_id, description)
+const photo = req.files.find(f => f.fieldname === "image")
+const additionalImage = req.files
+    .filter(f => f.fieldname === "additional_images")
+    .map(f => f.path)
+
+console.log("photo", photo)
+console.log("additionalImage", additionalImage)
     const product = await Product.findOne({ where: { name } })
     if (product) return next(new ErrorHandler("Product already exists", 400))
     if (!name || !price || !stock || !category_id || !description) {
-        if (photo) {
-            rm(photo?.path, () => {
+        if (photo || additionalImage) {
+            rm(photo?.path , () => {
                 console.log("deleted")
             })
+// rm(additionalImage?.path, () => {
+//                 console.log("deleted")
+//             })
         }
 
         return next(new ErrorHandler("Please enter all fields", 400))
 
     }
     const products = await Product.create({
-        name, price, stock, category_id, description, image: photo?.path, user_id
+        name, price, stock, category_id, description, image: photo?.path, user_id,additional_images:additionalImage
     })
+
+    console.log("product",products)
+    console.log("Produt succesfully created")
+
     await InvalidateCache(products)
     return res.status(201).json({
         success: true,
@@ -68,32 +82,54 @@ export const getLatestProducts = TryCatch(async (req, res, next) => {
     });
 });
 export const updateProducts = TryCatch(async (req, res, next) => {
-    const { id } = req.params
+    const {slug } = req.params
     const { name, price, stock, category_id, description } = req.body
-    const photo = req.file
-    const product = await Product.findByPk(id)
+const photo = req.files.find(f => f.fieldname === "image")
+const additionalImage = req.files
+    .filter(f => f.fieldname === "additional_images")
+    .map(f => f.path)
+
+    const product = await Product.findOne({where:{slug}})
 
 
 
+if (!product) {
+  if (photo) {
+    fs.unlink(photo.path, (err) => {
+      if (err) console.log("Error deleting uploaded image:", err)
+    })
+  }
 
-    if (!product) {
+  if (additionalImage.length > 0) {
+    additionalImage.forEach(imgPath => {
+      fs.unlink(imgPath, (err) => {
+        if (err) console.log("Error deleting additional image:", err)
+      })
+    })
+  }
 
-
-        if (photo) {
-            fs.unlink(photo.path, (err) => {
-                if (err) console.log("Error deleting uploaded image:", err);
-            });
-        }
-        return next(new ErrorHandler("Invalid product", 400))
-
-    }
+  return next(new ErrorHandler("Invalid product", 400))
+}
 
     if (name !== undefined) product.name = name
     if (price !== undefined) product.price = price
     if (stock !== undefined) product.stock = stock
     if (category_id !== undefined) product.category_id = category_id
     if (description !== undefined) product.description = description
-    if (photo !== undefined) product.image = photo.path
+   if (photo !== undefined) {
+    if (product.image) {
+      fs.unlink(product.image, (err) => {
+        if (err) console.log("Error deleting old image:", err)
+      })
+    }
+    product.image = photo.path
+  }
+
+  // ✅ Bug 1 fixed
+  if (additionalImage.length > 0) {
+    product.additional_images = additionalImage
+  }
+
     await product.save()
     await InvalidateCache(products)
     return res.status(200).json({
@@ -120,7 +156,80 @@ export const getAdminProducts = TryCatch(async (req, res, next) => {
     })
 })
 
+// export const bulkCreate=TryCatch(async (req,res,next)=>{
+// const {products}=req.body
+// console.log("req.body" ,req.body)
+// const result= await Product.bulkCreate(products,{
+//     validate:true,
+//     ignoreDuplicates:true
+// })
+// console.log("Result",result)
 
+// res.status(201).json({
+// message:`${result.length} Product Created`,
+// data:result
+
+// })
+
+
+// })
+
+
+export const bulkCreate = async (req, res) => {
+  const products = JSON.parse(req.body.products);
+  const files    = req.files; // all uploaded files with fieldname
+
+  console.log("files", files);
+  // [
+  //   { fieldname: 'main_images',   filename: '123-iphone-main.jpg',   ... },
+  //   { fieldname: 'main_images',   filename: '456-samsung-main.jpg',  ... },
+  //   { fieldname: 'additional_0',  filename: '789-iphone-extra1.jpg', ... },
+  //   { fieldname: 'additional_0',  filename: '101-iphone-extra2.jpg', ... },
+  //   { fieldname: 'additional_1',  filename: '112-samsung-extra1.jpg',...},
+  // ]
+
+  // separate main images
+  const mainImages = files.filter(f => f.fieldname === 'main_images');
+
+  // group additional images by product index
+  const additionalImages = {};
+  files
+    .filter(f => f.fieldname.startsWith('additional_'))
+    .forEach(f => {
+      const index = f.fieldname.split('_')[1]; // get index from "additional_0"
+      if (!additionalImages[index]) additionalImages[index] = [];
+      additionalImages[index].push(`/uploads/products/${f.filename}`);
+    });
+
+  const transaction = await sequelize.transaction();
+
+  try {
+    const result = await Promise.all(
+      products.map((product, index) =>
+        Product.create(
+          {
+            ...product,
+            image: mainImages[index]
+              ? `/uploads/products/${mainImages[index].filename}`
+              : null,
+            additional_images: additionalImages[index] ?? [], // array of URLs
+          },
+          { transaction }
+        )
+      )
+    );
+
+    await transaction.commit();
+
+    res.status(201).json({
+      message: `${result.length} products created`,
+      data: result,
+    });
+  } catch (err) {
+    await transaction.rollback();
+    res.status(400).json({ error: err.message });
+  }
+};
 
 export const getAllProducts = TryCatch(async (req, res, next) => {
     const { name, category } = req.query
@@ -149,7 +258,7 @@ export const getAllProducts = TryCatch(async (req, res, next) => {
         limit: limit, offset: skip,
         order: [['price', sortOrder]]
     })
-    console.log("products", products)
+    console.log("get products", products.rows)
     return res.status(200).json({
 
         success: true,
@@ -175,6 +284,8 @@ export const deleteProducts = TryCatch(async (req, res, next) => {
 
 export const getSingleProduct = TryCatch(async (req, res, next) => {
     let product;
+    let seller_name;
+    let seller_id;
     const { slug } = req.params
     if (nodeCache.has(`product-${slug}`)) {
         product = JSON.parse(nodeCache.get(`product-${slug}`))
@@ -183,10 +294,22 @@ export const getSingleProduct = TryCatch(async (req, res, next) => {
         product = await Product.findOne({ where: { slug } })
         nodeCache.set(`product-${slug}`, JSON.stringify(product))
     }
+            console.log("product",product)
+        const user_id = product?.dataValues?.user_id || product?.user_id;
+        console.log("userid",user_id)
+        const user = await User.findOne({ where: { id: user_id } });
+        console.log("user",user)
+         seller_name =user?.dataValues?.name 
+         seller_id=user_id
+         console.log("seller_name",seller_name)
+         console.log("seller_id",seller_id)
     if (!product) return next(new ErrorHandler("Invalid product", 400))
     return res.status(200).json({
         success: true,
-        product
+        product,
+        sellerName:seller_name,
+        seller_id:seller_id
+        
     })
 })
 export const generateRandomProducts = async (count) => {
@@ -230,20 +353,20 @@ getproducts()
 
 let products;
 
-async function insertProducts() {
+// async function insertProducts() {
 
-    products = await Product.findAll({})
-    const bulkOps = products.flatMap(product => [
-        { index: { _index: 'product', _id: product.id } },
-        product.toJSON() // converts Sequelize model to plain object
-    ]);
-    await client.bulk({ operations: bulkOps, refresh: true });
-    console.log('✅ Products indexed into Elastic Cloud');
-}
+//     products = await Product.findAll({})
+//     const bulkOps = products.flatMap(product => [
+//         { index: { _index: 'product', _id: product.id } },
+//         product.toJSON() // converts Sequelize model to plain object
+//     ]);
+//     await client.bulk({ operations: bulkOps, refresh: true });
+//     console.log('✅ Products indexed into Elastic Cloud');
+// }
 
 
 
-insertProducts();
+// insertProducts();
 
 // async function DeleteElastic() {
 //     products = await Product.findAll({})
@@ -260,29 +383,29 @@ insertProducts();
 // DeleteElastic()
 
 
-export const searchProducts = TryCatch(async (req, res) => {
-    const { q } = req.query;
+// export const searchProducts = TryCatch(async (req, res) => {
+//     const { q } = req.query;
 
-    if (!q) return res.json([]);
+//     if (!q) return res.json([]);
 
-    try {
-        const result = await client.search({
-            index: "product",
-            query: { match_phrase_prefix: { name: q } },
-            size: 10
-        });
-        console.log("result", result)
-        const suggestions = result.hits.hits.map(hit => hit._source);
-        return res.status(200).json({
-            success: true,
-            message: "Search query",
-            suggestions
-        })
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Elasticsearch search failed" });
-    }
-});
+//     try {
+//         const result = await client.search({
+//             index: "product",
+//             query: { match_phrase_prefix: { name: q } },
+//             size: 10
+//         });
+//         console.log("result", result)
+//         const suggestions = result.hits.hits.map(hit => hit._source);
+//         return res.status(200).json({
+//             success: true,
+//             message: "Search query",
+//             suggestions
+//         })
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ error: "Elasticsearch search failed" });
+//     }
+// });
 
 
 // Delete all products not referenced in orderitems

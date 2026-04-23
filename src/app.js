@@ -1,4 +1,4 @@
-import express, { urlencoded } from "express";
+import express from "express";
 // import { connectDb } from "./utils/feature.js";
 import { errorMiddleware } from "./middleware/error.js";
 import user from './routes/user.js'
@@ -19,28 +19,28 @@ import address from './routes/address.js'
 import path from "path";
 const app = express();
 const __dirname = path.resolve();
-import { client } from './utils/elastic.js';
+// import { client } from './utils/elastic.js';
 
 
 dotenv.config();
 app.use(cors()); // allow all origins
 app.use(express.json());
 app.use(morgan('dev'))
-app.use(urlencoded({ extended: true }))
+app.use(express.urlencoded({ extended: true }))
 const port = process.env.PORT || 4000
 // connectDb()
 
 
 
 // Test connection
-async function testElastic() {
-    try {
-        await client.ping();
-        console.log('Elasticsearch is running');
-    } catch (error) {
-        console.error('Elasticsearch is down:', error.message);
-    }
-}
+// async function testElastic() {
+//     try {
+//         await client.ping();
+//         console.log('Elasticsearch is running');
+//     } catch (error) {
+//         console.error('Elasticsearch is down:', error.message);
+//     }
+// }
 
 
 
@@ -76,7 +76,7 @@ app.use('/api/v1/order', order);
 app.use('/api/v1/cart', cart);
 app.use('/api/v1/address', address);
 app.use(errorMiddleware);
-testElastic();
+// testElastic();
 // 3. START LISTENING ONLY NOW
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);

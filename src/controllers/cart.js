@@ -4,6 +4,7 @@ import { Cartitems } from "../models/cartitems.js"
 import ErrorHandler from "../utils/utilityclass.js"
 import { rm } from "node:fs"
 import { Product } from "../models/product_Two.js"
+import { User } from "../models/user_two.js"
 // user can get cart id only once logged in 
 // update and create cart items
 
@@ -11,18 +12,18 @@ export const cart = TryCatch(async (req, res, next) => {
 
     const user_id = req.user.id
     const { product_id, quantity } = req.body
+     const product = await Product.findByPk(product_id);
     if (!product_id || !quantity) {
 
         return next(new ErrorHandler("Please provide all the required fields", 400))
     }
-
+ if (!product)   return next(new ErrorHandler("Product not found", 404))
 
 
 
     let cart = await Cart.findOne({ where: { user_id: user_id } })
     if (!cart) {
         cart = await Cart.create({ user_id: user_id })
-
     }
     const cart_id = cart.id
     console.log("Cart", cart_id)
@@ -41,7 +42,9 @@ export const cart = TryCatch(async (req, res, next) => {
         await Cartitems.create({
             cart_id,
             quantity,
-            product_id
+            product_id,
+            seller_id:product.user_id
+         
 
         })
     }
@@ -58,7 +61,7 @@ export const getCartitems = TryCatch(async (req, res, next) => {
     const cart_id = cart.id
     const cartitems = await Cartitems.findAll({ where: { cart_id: cart_id } })
     const product = await Product.findAll({ where: { id: cartitems.map(item => item.product_id) } });
-
+const sellerName=await User.findOne({where:{id:user_id}})
     const items = cartitems.map(item => {
         const products = product.find((p) => p.id === item.product_id);
         console.log("product id", products)
@@ -68,7 +71,8 @@ export const getCartitems = TryCatch(async (req, res, next) => {
             quantity: item.quantity,
             name: products?.name,
             price: products?.price,
-            image: products?.image
+            image: products?.image,
+            seller_id:item.seller_id
         };
     });
 
@@ -116,7 +120,6 @@ export const deleteCartItems = TryCatch(async (req, res, next) => {
 
 
 })
-
 export const updateCartQuantity = TryCatch(async (req, res, next) => {
     const { id } = req.params
     const { quantity } = req.body

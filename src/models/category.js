@@ -15,7 +15,7 @@ export const Category = sequelize.define(
         },
         image: {
             type: DataTypes.STRING,
-            allowNull: false
+            allowNull: true
         }
 
     },

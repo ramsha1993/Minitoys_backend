@@ -33,8 +33,17 @@ export const OrderItems = sequelize.define("orderitems", {
         references: {
             model: "product",
             key: "id"
-        }
+        },
+
     }
+    ,    seller_id:{
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references:{
+            model:"users",
+            key:"id"
+        }
+        }
 }, {
     timestamps: true,
     // paranoid: true,

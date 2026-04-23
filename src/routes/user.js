@@ -1,20 +1,22 @@
 import { Router } from "express";
 // import { deleteUser, getAllUsers, getSingleUser, upadteUser } from "../controllers/user.js";
-import { createUser, getSingleUser, getAllUsers, upadteUser, deleteUser, SignUp, Login } from "../controllers/user_Two.js";
+import { createUser, getSingleUser, getAllUsers, upadteUser, deleteUser, SignUp, Login, AdminLogin } from "../controllers/user_Two.js";
 import express from "express";
-// import { adminOnly } from "../middleware/auth.js";
-
+import { authAdminMiddleware, authMiddleware } from "../middleware/auth.js";
+import {singleUpload} from'../middleware/multer.js'
 const app = express.Router()
 // for yser
+app.post("/new",authMiddleware,singleUpload,createUser)
+
 app.post("/register", SignUp)
 app.post("/login", Login)
+app.post("/admin/login", AdminLogin)
 
 // for admin admin only 
-app.post("/new", createUser)
-app.get("/all", getAllUsers)
+app.get("/all",authAdminMiddleware, getAllUsers)
 
 app.get("/:id", getSingleUser)
-app.put("/:id", upadteUser)
+app.put("/:id", authMiddleware,singleUpload,upadteUser)
 app.delete("/:id", deleteUser)
 
 export default app

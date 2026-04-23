@@ -3,17 +3,16 @@ import { Router } from "express";
 import { createUser, getSingleUser, getAllUsers, upadteUser, deleteUser } from "../controllers/user_Two.js";
 import express from "express";
 import { authMiddleware } from "../middleware/auth.js";
-import { getMyOrders, myOrders, newOrder } from "../controllers/order.js";
+import { getMyOrders, myOrders, newOrder,getOrderItems } from "../controllers/order.js";
 // import { adminOnly } from "../middleware/auth.js";
 
 const app = express.Router()
 // authenticated routes 
 app.post("/new", authMiddleware, newOrder)
 // admin routes
-app.get("/All", getMyOrders)
-
+app.get("/all", getMyOrders)
 // vendor/user routes
 app.get("/myOrders", authMiddleware, myOrders)
-
+app.get("/orderItems",getOrderItems)
 
 export default app

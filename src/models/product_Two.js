@@ -4,8 +4,6 @@ import { client } from '../utils/elastic.js'
 
 import SequelizeSlugify from 'sequelize-slugify';
 export const Product = sequelize.define("Product", {
-
-
     user_id: {
         type: DataTypes.INTEGER,
         allowNull: false,
@@ -37,8 +35,16 @@ export const Product = sequelize.define("Product", {
 
     image: {
         type: DataTypes.STRING,
-        allowNull: [false, "Please insert product image"]
+      allowNull:true
     },
+
+    additional_images:{
+      type:DataTypes.JSON,
+      allowNull:true,
+      defaultValue:[]
+
+    },
+    
     description: {
         type: DataTypes.STRING,
         allowNull: false
@@ -68,27 +74,27 @@ SequelizeSlugify.slugifyModel(Product, {
 });
 
 
-Product.afterCreate(async (product) => {
-    await client.index({
-        index: "product",
-        id: product.id,
-        document: product.toJSON()
+// Product.afterCreate(async (product) => {
+//     await client.index({
+//         index: "product",
+//         id: product.id,
+//         document: product.toJSON()
 
-    })
-})
-Product.afterUpdate(async (product) => {
-    await client.index({
-        index: "product",
-        id: product.id,
-        document: product.toJSON()
+//     })
+// })
+// Product.afterUpdate(async (product) => {
+//     await client.index({
+//         index: "product",
+//         id: product.id,
+//         document: product.toJSON()
 
-    })
-})
-Product.afterDestroy(async (product) => {
-    await client.delete({
-        index: product,
-        id: product.id,
-        document: product.toJSON()
-    })
+//     })
+// })
+// Product.afterDestroy(async (product) => {
+//     await client.delete({
+//         index: product,
+//         id: product.id,
+//         document: product.toJSON()
+//     })
 
-})
+// })

@@ -14,9 +14,10 @@ export const User = sequelize.define('users', {
     email: {
         type: DataTypes.STRING,
         allowNull: false,
+        // unique:true,
         validate: {
             isEmail: true // Ensures the data is actually an email format
-        }
+   }
     },
     password: {
         type: DataTypes.STRING,
@@ -26,13 +27,14 @@ export const User = sequelize.define('users', {
         type: DataTypes.ENUM("admin", "user", "vendor"),
         allowNull: false,
         defaultValue: "user" // Fixed the case-sensitivity here
-    },
-    status: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: true // true = 1, false = 0
+    },   
+
+     status: {
+        type: DataTypes.ENUM("active","inactive","suspended","pending"),
+        defaultValue:"pending"
     }
-}, {
+    },
+    {
     timestamps: true,
     paranoid: true,
     tableName: 'users',

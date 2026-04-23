@@ -24,9 +24,17 @@ export const Cartitems = sequelize.define("cartitems", {
             model: "product",
             key: "id"
         }
+    },
+
+    seller_id:{
+        type:DataTypes.INTEGER,
+        allowNull:false,
+        references:{
+                model:"users",
+                key:"id"
+        }
+
     }
-
-
 
 
 }, {

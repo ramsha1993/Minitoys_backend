@@ -8,6 +8,7 @@ import { OrderItems } from "../models/orderitems.js";
 import { nodeCache } from "../app.js";
 import { Address } from "../models/address.js";
 import { where } from "sequelize";
+import { User } from "../models/user_two.js";
 
 
 
@@ -20,12 +21,11 @@ export const newOrder = TryCatch(async (req, res, next) => {
         , pay_method,
         address_id,
         cart_item_ids,
+        
     } = req.body;
 
-    if (
-
-        !subTotal || !shippingFee || !totalAmount || !pay_method || !Array.isArray(cart_item_ids) || cart_item_ids.length === 0
-        || !Array.isArray(cart_item_ids) || cart_item_ids.length === 0
+    if (  !subTotal || !shippingFee || !totalAmount || !pay_method || !Array.isArray(cart_item_ids) || cart_item_ids.length === 0
+        || !Array.isArray(cart_item_ids) || cart_item_ids.length === 0 
     ) {
         return next(new ErrorHandler("Please enter all fields", 400));
     }
@@ -58,18 +58,26 @@ export const newOrder = TryCatch(async (req, res, next) => {
     const Productitems = await Product.findAll({
         where: { id: cartItems.map(item => item.product_id) }
     })
+
+
+
     // 3️⃣ Create OrderItems from CartItems
-    const orderItemsData = cartItems.map(item => ({
+    const orderItemsData = cartItems.map(item => {
+       console.log("itemseller id",item.seller_id);
+
+    const product=Productitems.find(product=> product.id === item.product_id);
+      return {
         order_id: order.id,
-        name: Productitems.find(product => product.id === item.product_id).name,
-        image: Productitems.find(product => product.id === item.product_id).image,
-        product_id: item.product_id,
-        quantity: item.quantity,
-        price: Productitems.find(product => product.id === item.product_id).price
-    }));
+        name:product.name,
+        image: product.image,
+        product_id: product.id,
+        quantity: product.quantity,
+        price: product.price,
+        seller_id:item.seller_id
+   };
+    });
 
     await OrderItems.bulkCreate(orderItemsData);
-
     // 4️⃣ Reduce stock
     for (let item of cartItems) {
         const product = await Product.findByPk(item.product_id);
@@ -82,7 +90,7 @@ export const newOrder = TryCatch(async (req, res, next) => {
         where: { id: cart_item_ids }
     });
 
-    await InvalidateCache();
+    // await InvalidateCache();
 
     return res.status(201).json({
         success: true,
@@ -92,12 +100,19 @@ export const newOrder = TryCatch(async (req, res, next) => {
 });
 
 export const getMyOrders = TryCatch(async (req, res, next) => {
+    
     const orders = await Order.findAll({
-
+   include:{
+    model:User,
+    attributes:['id','name']
+   }
     });
+    console.log("orders",orders)
+  
     return res.status(200).json({
         success: true,
-        orders
+        orders,
+
     });
 })
 // to cache key with
@@ -122,6 +137,7 @@ export const myOrders = TryCatch(async (req, res, next) => {
     // else {
     order = await Order.findAll({
         where: { user_id: id },
+
         include: [OrderItems]
     })
     // nodeCache.set(cacheKey, JSON.stringify(order))
@@ -136,3 +152,25 @@ export const myOrders = TryCatch(async (req, res, next) => {
 
 
 })
+export const getOrderItems = TryCatch(async (req, res, next) => {
+    
+    const orders = await OrderItems.findAll({
+            include:[
+                {
+                model:User,
+                as:"seller",
+                attributes:['id','name','email'],
+                foreignKey:'seller_id'
+            }
+        ]
+
+     })
+    console.log("ordersitems",orders)
+  
+    return res.status(200).json({
+        success: true,
+        orders,
+
+    });
+})
+
