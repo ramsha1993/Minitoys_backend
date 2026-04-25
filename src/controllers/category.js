@@ -83,9 +83,15 @@ export const getSingleCategory = TryCatch(async (req, res, next) => {
 export const updateCategory = TryCatch(async (req, res, next) => {
     const { id } = req.params
     const { name } = req.body
+    const image =req.file?.path
+    if(!image){
+      return next(new ErrorHandler("Image is required", 400))
+    }
     const category = await Category.findByPk(id)
     if (!category) return next(new ErrorHandler("Invalid category", 400))
-    if (name !== undefined) category.name = name
+    if (name !== undefined || image!==undefined)
+         category.name = name
+        category.image=image
     await category.save()
     nodeCache.del("categories");  
     return res.status(200).json({

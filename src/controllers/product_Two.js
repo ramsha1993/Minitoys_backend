@@ -13,6 +13,9 @@ import sequelize from "../../db.js";
 import { Op, literal } from "sequelize"; // <-- this is the class
 import fs from 'fs'
 import { User } from "../models/user_two.js";
+import XLSX from 'xlsx';
+import { Category } from "../models/category.js";
+
 
 dotenv.config();
 
@@ -170,55 +173,56 @@ export const getAdminProducts = TryCatch(async (req, res, next) => {
 // data:result
 
 // })
-
-
 // })
 
 
-export const bulkCreate = async (req, res) => {
-  const products = JSON.parse(req.body.products);
-  const files    = req.files; // all uploaded files with fieldname
 
-  console.log("files", files);
-  // [
-  //   { fieldname: 'main_images',   filename: '123-iphone-main.jpg',   ... },
-  //   { fieldname: 'main_images',   filename: '456-samsung-main.jpg',  ... },
-  //   { fieldname: 'additional_0',  filename: '789-iphone-extra1.jpg', ... },
-  //   { fieldname: 'additional_0',  filename: '101-iphone-extra2.jpg', ... },
-  //   { fieldname: 'additional_1',  filename: '112-samsung-extra1.jpg',...},
-  // ]
+export const bulkCreateFromExcel =TryCatch( async (req, res,next) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  // Parse Excel
+  const workbook = XLSX.readFile(req.file.path);
+  const user_id=req.user.id;
+  const sheet  = workbook.Sheets[workbook.SheetNames[0]];
+  const rows   = XLSX.utils.sheet_to_json(sheet);
+  if (!rows.length) return res.status(400).json({ error: 'Excel sheet is empty' });
+  // Validate & shape rows
+  const errors   = [];
+  const categories=await Category.findAll({})
+  const products = rows.map((row, i) => {
+   
+    const rowNum = i + 2; // +2 because row 1 is header
+    const categoryName = row.category ? String(row.category).toLowerCase().trim() : "";
+const category=categories.find((e)=>e.name.toLowerCase()== categoryName)
+console.log("selected category",categories)
+if(!category) return  next(new ErrorHandler("Invalid category", 404))
+    if (!row.name)  errors.push(`Row ${rowNum}: missing name`);
+    if (!row.price) errors.push(`Row ${rowNum}: missing price`);
+//    const category= await Category.findOne({id:row?.category_id})
+//    if(!category) return next(new ErrorHandler("Invalid category", 400))
+    return {
+      name:        row.name,
+      price:       parseFloat(row.price),
+      description: row.description ?? null,
+       category_id:category.id,
+       stock:row.stock,
+      // Cloudinary full URL — already uploaded before making the sheet
+      image: row.image ?? null,
+      user_id:user_id,
 
-  // separate main images
-  const mainImages = files.filter(f => f.fieldname === 'main_images');
+      // Comma-separated Cloudinary URLs in one cell
+      // e.g. "https://res.cloudinary.com/.../a.jpg, https://res.cloudinary.com/.../b.jpg"
+      additional_images: row.additional_images
+        ? row.additional_images.split(',').map(s => s.trim())
+        : [],
+    };
+  });
 
-  // group additional images by product index
-  const additionalImages = {};
-  files
-    .filter(f => f.fieldname.startsWith('additional_'))
-    .forEach(f => {
-      const index = f.fieldname.split('_')[1]; // get index from "additional_0"
-      if (!additionalImages[index]) additionalImages[index] = [];
-      additionalImages[index].push(`/uploads/products/${f.filename}`);
-    });
+  if (errors.length) return res.status(400).json({ errors });
 
+  // Bulk insert (reuses your transaction pattern)
   const transaction = await sequelize.transaction();
-
   try {
-    const result = await Promise.all(
-      products.map((product, index) =>
-        Product.create(
-          {
-            ...product,
-            image: mainImages[index]
-              ? `/uploads/products/${mainImages[index].filename}`
-              : null,
-            additional_images: additionalImages[index] ?? [], // array of URLs
-          },
-          { transaction }
-        )
-      )
-    );
-
+    const result = await Product.bulkCreate(products, { transaction });
     await transaction.commit();
 
     res.status(201).json({
@@ -227,9 +231,10 @@ export const bulkCreate = async (req, res) => {
     });
   } catch (err) {
     await transaction.rollback();
+    console.log(" bulk error",err)
     res.status(400).json({ error: err.message });
   }
-};
+})
 
 export const getAllProducts = TryCatch(async (req, res, next) => {
     const { name, category } = req.query
@@ -245,6 +250,7 @@ export const getAllProducts = TryCatch(async (req, res, next) => {
             { description: { [Op.like]: `%${name}%` } }
         ]
     }
+
     if (category) {
         baseQuery.category_id = category
     }
