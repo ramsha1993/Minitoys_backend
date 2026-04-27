@@ -1,6 +1,6 @@
 import sequelize from "../../db.js"
 import { DataTypes } from "sequelize"
-import { client } from '../utils/elastic.js'
+// import { client } from '../utils/elastic.js'
 
 import SequelizeSlugify from 'sequelize-slugify';
 export const Product = sequelize.define("Product", {
