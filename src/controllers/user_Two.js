@@ -4,7 +4,7 @@ import ErrorHandler from "../utils/utilityclass.js";
 import jwt from "jsonwebtoken"
 import dotenv from "dotenv"
 import {seller} from '../models/sellerProfile.js'
-import { Categories_Commission } from "../models/commission_Categories.js";
+import { Categories_Commission } from "../models/commission_categories.js";
 import { store } from "../models/store.js";
 import bcrypt from "bcrypt"
 import sequelize from "../../db.js";
