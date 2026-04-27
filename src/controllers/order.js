@@ -71,7 +71,7 @@ export const newOrder = TryCatch(async (req, res, next) => {
         name:product.name,
         image: product.image,
         product_id: product.id,
-        quantity: product.quantity,
+        quantity: item.quantity,
         price: product.price,
         seller_id:item.seller_id
    };
