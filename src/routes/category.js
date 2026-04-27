@@ -16,7 +16,7 @@ app.delete('/category-image/:id',authAdminMiddleware,cloudSingleUpload,deleteCat
 //     console.log("file:", req.file)
 //     res.json({ body: req.body, file: req.file })
 // })
-app.get("/all",authMiddleware, getAllCategories)
+app.get("/all", getAllCategories)
 app.put('/:id', authAdminMiddleware,cloudSingleUpload,updateCategory)
 app.get('/:id',authMiddleware, getSingleCategory)
 app.delete('/:id',authAdminMiddleware, deleteCategory)
