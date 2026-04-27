@@ -3,7 +3,7 @@ import { OrderItems } from "./orderitems.js"
 import { Order } from "./order.js"
 import { User } from "./user_two.js"
 import { seller } from "./sellerProfile.js"
-import { Categories_Commission } from "./commission_Categories.js"
+import { Categories_Commission } from "./commission_categories.js"
 import { store } from "./store.js"
 
 
