@@ -78,7 +78,7 @@ export const SignUp = TryCatch(async (req, res, next) => {
 
     })
 
-    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_TOKEN, { expiresIn: "1d" })
+    const token = jwt.sign({ id: user.id, email: user.email, role:user.role }, process.env.JWT_TOKEN, { expiresIn: "1d" })
     return res.status(200).json({
         success: true,
         message: "User Created Successfully",
