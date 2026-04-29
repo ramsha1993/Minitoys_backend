@@ -1,6 +1,6 @@
 import { Router } from "express";
 // import { deleteUser, getAllUsers, getSingleUser, upadteUser } from "../controllers/user.js";
-import { createUser, getSingleUser, getAllUsers, upadteUser, deleteUser, SignUp, Login, AdminLogin } from "../controllers/user_Two.js";
+import { createUser, getSingleUser,getProfile, getAllUsers, upadteUser, deleteUser, SignUp, Login, AdminLogin } from "../controllers/user_Two.js";
 import express from "express";
 import { authAdminMiddleware, authMiddleware } from "../middleware/auth.js";
 import {singleUpload} from'../middleware/multer.js'
