@@ -14,9 +14,9 @@ app.post("/admin/login", AdminLogin)
 
 // for admin admin only 
 app.get("/all",authAdminMiddleware, getAllUsers)
-
+app.get("/get-profile",authMiddleware,getProfile)
 app.get("/:id", getSingleUser)
-app.put("/:id", authMiddleware,singleUpload,upadteUser)
+app.put("/:id", authAdminMiddleware,singleUpload,upadteUser)
 app.delete("/:id", deleteUser)
 
 export default app

@@ -8,6 +8,7 @@ import { Categories_Commission } from "../models/commission_categories.js";
 import { store } from "../models/store.js";
 import bcrypt from "bcrypt"
 import sequelize from "../../db.js";
+import { nodeCache } from "../app.js";
 // logged in and signup user can only sign up vendor cannot seller cannot be sign in as
 // user and 
 
@@ -304,6 +305,34 @@ export const getSingleUser = TryCatch(async (req, res, next) => {
 
 
 })
+export const getProfile = TryCatch(async (req, res, next) => {
+    const User_id= req.user.id
+    if(nodeCache.has(`Profile${User_id}`)){
+    let userProfile= nodeCache.get(`Profile${User_id}`)
+           return res.status(200).json({
+        success: true,
+        userProfile,
+        // sellerRecord,
+        // Store
+    })
+    }
+     const user = await User.findByPk(User_id)
+          if (!user) return next(new ErrorHandler("Invalid user", 400))
+ const { password, resetToken, ...safeUser } = user.toJSON();
+
+     nodeCache.set(`Profile${User_id}`,safeUser)
+ return res.status(200).json({
+        success: true,
+       userProfile: safeUser,
+        // sellerRecord,
+        // Store
+    })
+
+
+})
+
+
+
 export const getAllUsers = TryCatch(async (req, res, next) => {
     const users = await User.findAll()
     return res.status(200).json({
