@@ -28,7 +28,7 @@ export const cart = TryCatch(async (req, res, next) => {
     const cart_id = cart.id
     console.log("Cart", cart_id)
     // console.log(`Request items, user_id ${user_id}, product_id ${product_id},image ${image},quantity ${quantity}, price ${price},name ${name}`)
-    const Cart_items = await Cartitems.findOne({ where: { cart_id: cart_id, product_id: product } })
+    const Cart_items = await Cartitems.findOne({ where: { cart_id: cart_id, product_id: product.id } })
     if (Cart_items) {
         Cart_items.quantity += 1;
         console.log("Cart items", Cart_items.quantity += quantity)
