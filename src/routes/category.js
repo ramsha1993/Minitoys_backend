@@ -1,6 +1,6 @@
 import { Router } from "express";
 import express from "express";
-import { createCategory, deleteCategory, getAllCategories, getSingleCategory, updateCategory,deleteCategoryImage } from "../controllers/category.js";
+import { createCategory, deleteCategory, getAllCategories, getSingleCategory, updateCategory,deleteCategoryImage, filterCategory, getAdminCategories } from "../controllers/category.js";
 import { singleUpload,singleFileUpload,cloudSingleUpload } from "../middleware/multer.js";
 import { adminOnly } from "../middleware/auth.js";
 import { authMiddleware,authAdminMiddleware } from "../middleware/auth.js";
@@ -17,8 +17,10 @@ app.delete('/category-image/:id',authAdminMiddleware,cloudSingleUpload,deleteCat
 //     res.json({ body: req.body, file: req.file })
 // })
 app.get("/all", getAllCategories)
+app.get("/admin/all",authAdminMiddleware, getAdminCategories)
 app.put('/:id', authAdminMiddleware,cloudSingleUpload,updateCategory)
-app.get('/:id',authMiddleware, getSingleCategory)
+app.get('/:id',authAdminMiddleware, getSingleCategory)
 app.delete('/:id',authAdminMiddleware, deleteCategory)
+app.get("/filter_category/:slug",filterCategory)
 
 export default app

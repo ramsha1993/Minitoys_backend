@@ -19,7 +19,8 @@ import address from './routes/address.js'
 import path from "path";
 const app = express();
 const __dirname = path.resolve();
-// import { client } from './utils/elastic.js';
+import { client } from './utils/elastic.js';
+import { Product } from "./models/product_Two.js";
 
 
 dotenv.config();
@@ -33,14 +34,51 @@ const port = process.env.PORT || 4000
 
 
 // Test connection
-// async function testElastic() {
+async function testElastic() {
+    try {
+        await client.ping();
+        console.log('Elasticsearch is running');
+    } catch (error) {
+        console.error('Elasticsearch is down:', error.message);
+        if (error.statusCode === 401) {
+            console.error('👉 Fix the credentials in your .env file or client config.');
+        }
+    }
+}
+
+
+// async function insertProducts() {
 //     try {
-//         await client.ping();
-//         console.log('Elasticsearch is running');
+//         const products = await Product.findAll({});
+        
+//         // Map products to the "Action/Metadata" + "Source" pairs OpenSearch needs
+//         const bulkBody = products.flatMap(product => [
+//             { index: { _index: 'products', _id: product.id } },
+//             product.get({ plain: true }) // Safer way to get raw data from Sequelize
+//         ]);
+
+//         // IMPORTANT: Use 'body' (Elastic uses 'operations', OpenSearch uses 'body')
+//         const response = await client.bulk({ 
+//             body: bulkBody, 
+//             refresh: true 
+//         });
+
+//         console.log("Response",response)
+//         if (response.errors) {
+//             console.error('❌ Errors in bulk operation:', response.items);
+//         } else {
+//             console.log(`✅ ${products.length} products successfully indexed into OpenSearch!`);
+//         }
 //     } catch (error) {
-//         console.error('Elasticsearch is down:', error.message);
+//         console.error('❌ Indexing failed:', error);
 //     }
 // }
+
+
+
+
+
+
 
 
 
@@ -76,7 +114,8 @@ app.use('/api/v1/order', order);
 app.use('/api/v1/cart', cart);
 app.use('/api/v1/address', address);
 app.use(errorMiddleware);
-// testElastic();
+testElastic();
+// insertProducts();
 // 3. START LISTENING ONLY NOW
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);

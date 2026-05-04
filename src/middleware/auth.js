@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { User } from "../models/user.js";
+import { User } from "../models/user_two.js";
 import ErrorHandler from "../utils/utilityclass.js";
 import { TryCatch } from "./error.js";
 import dotenv from "dotenv"
@@ -22,7 +22,11 @@ export const authMiddleware = TryCatch(async (req, res, next) => {
     const token = authHeader.split(' ')[1];
     const decodedToken = jwt.verify(token, process.env.JWT_TOKEN)
     console.log("decodedToken", decodedToken)
+    const user=await User.findByPk(decodedToken.id)
+    if(!user) return next(new ErrorHandler("Invalid User"))
+        console.log("user profile",user)
     if (decodedToken.role !== "user") return next(new ErrorHandler("You are not authorized to perform this action", 400));
+    
     req.user = decodedToken
     return next()
 })
@@ -34,7 +38,7 @@ export const authAdminMiddleware = TryCatch(async (req, res, next) => {
 
     // 2. Extract the token from "Bearer <token>"
     const token = authHeader.split(' ')[1];
-    const decodedToken = jwt.verify(token, process.env.JWT_TOKEN)
+    const decodedToken = jwt.verify(token, process.env.JWT_TOKEN_ADMIN)
     console.log("decodedToken", decodedToken)
     const Role=decodedToken.role
     console.log('role',Role)

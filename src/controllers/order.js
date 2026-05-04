@@ -63,7 +63,7 @@ export const newOrder = TryCatch(async (req, res, next) => {
 
     // 3️⃣ Create OrderItems from CartItems
     const orderItemsData = cartItems.map(item => {
-       console.log("itemseller id",item.seller_id);
+    //    console.log("itemseller id",item.seller_id);
 
     const product=Productitems.find(product=> product.id === item.product_id);
       return {
@@ -73,7 +73,7 @@ export const newOrder = TryCatch(async (req, res, next) => {
         product_id: product.id,
         quantity: item.quantity,
         price: product.price,
-        seller_id:item.seller_id
+        seller_id:product.user_id
    };
     });
 

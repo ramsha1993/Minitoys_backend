@@ -8,7 +8,7 @@ import { faker } from "@faker-js/faker";
 import slugify from 'slugify';
 import { nodeCache } from "../app.js";
 import { InvalidateCache } from "../utils/feature.js";
-// import { client } from '../utils/elastic.js'
+import { client } from '../utils/elastic.js'
 import sequelize from "../../db.js";
 import { Op, literal } from "sequelize"; // <-- this is the class
 import fs from 'fs'
@@ -262,7 +262,8 @@ export const getAllProducts = TryCatch(async (req, res, next) => {
     const products = await Product.findAndCountAll({
         where: baseQuery,
         limit: limit, offset: skip,
-        order: [['price', sortOrder]]
+        order: [['price', sortOrder]],
+        attributes:["name","price","slug","stock","image","additional_images","description"]
     })
     console.log("get products", products.rows)
     return res.status(200).json({
@@ -351,28 +352,14 @@ const delteteAllproducts = async () => {
 }
 // delteteAllproducts()
 
-const getproducts = async () => {
-    products = await Product.findAll({})
-    console.log("products", products.map(p => p.toJSON()))
-}
-getproducts()
+// const getproducts = async () => {
+//     products = await Product.findAll({})
+//     console.log("products", products.map(p => p.toJSON()))
+// }
+// getproducts()
 
 let products;
 
-// async function insertProducts() {
-
-//     products = await Product.findAll({})
-//     const bulkOps = products.flatMap(product => [
-//         { index: { _index: 'product', _id: product.id } },
-//         product.toJSON() // converts Sequelize model to plain object
-//     ]);
-//     await client.bulk({ operations: bulkOps, refresh: true });
-//     console.log('✅ Products indexed into Elastic Cloud');
-// }
-
-
-
-// insertProducts();
 
 // async function DeleteElastic() {
 //     products = await Product.findAll({})
@@ -389,29 +376,43 @@ let products;
 // DeleteElastic()
 
 
-// export const searchProducts = TryCatch(async (req, res) => {
-//     const { q } = req.query;
+export const searchProducts = TryCatch(async (req, res) => {
+    const { q } = req.query;
+    console.log("Query",q)
 
-//     if (!q) return res.json([]);
+    if (!q) return res.json([]);
 
-//     try {
-//         const result = await client.search({
-//             index: "product",
-//             query: { match_phrase_prefix: { name: q } },
-//             size: 10
-//         });
-//         console.log("result", result)
-//         const suggestions = result.hits.hits.map(hit => hit._source);
-//         return res.status(200).json({
-//             success: true,
-//             message: "Search query",
-//             suggestions
-//         })
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ error: "Elasticsearch search failed" });
-//     }
-// });
+    try {
+        const result = await client.search({
+            index: "products",
+         body:{query: {multi_match: { // multi_match is better than match
+                        query: q,
+                        fields: ["name", "description"], // Search in both name and description
+                        fuzziness: "AUTO" // Handles typos!
+                    } }},
+            size: 10
+        });
+        console.log("result", result)
+        const hits = result.body.hits.hits;
+     const suggestions = hits.map(hit => ({
+    name: hit._source.name,
+    slug: hit._source.slug,
+    price: hit._source.price,
+    image: hit._source.image,
+    stock: hit._source.stock > 0, // ✅ just boolean, not actual count
+}));
+        return res.status(200).json({
+            success: true,
+            message: "Search query",
+            suggestions
+        })
+    } catch (err) {
+        console.error(err);
+        res.status(500).json(err);
+    }
+});
+
+
 
 
 // Delete all products not referenced in orderitems

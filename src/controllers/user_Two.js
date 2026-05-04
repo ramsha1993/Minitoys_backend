@@ -24,12 +24,11 @@ export const Login = TryCatch(async (req, res, next) => {
     }
     if (user.role === "vendor" || user.role === "admin") return next(new ErrorHandler("You are not authorized to perform this action", 400))
     console.log("user", user.password, password)
-    if (!user) return next(new ErrorHandler("Invalid user", 400))
     if (user.status !== "active" )
         return next(new ErrorHandler("User is not active", 400))
     const isMatch = await bcrypt.compare(password, user.password)
     console.log("isMatch", isMatch)
-    if (!isMatch) return next(new ErrorHandler("Invalid password", 400))
+    if (!isMatch) return next(new ErrorHandler("Invalid User name and password", 400))
     const token = jwt.sign({ id: user.id, role: user.role, email: user.email }, process.env.JWT_TOKEN, { expiresIn: "1d" })
     return res.status(200).json({
         success: true,
@@ -44,18 +43,17 @@ export const AdminLogin = TryCatch(async (req, res, next) => {
     const allowUserRoles=["vendor","admin"]
     const { email, password } = req.body
     user = await User.findOne({ where: { email } })
-console.log("user role",user.role,user.status)
-    console.log("test",!allowUserRoles.includes(user.role) || user.status !=="active",)
+    if (!user) return next(new ErrorHandler("Invalid user", 400))
+
     if (!allowUserRoles.includes(user.role) || user.status !== "active") return next(new ErrorHandler("You are not authorized to perform this action", 400))
     console.log("user status", user.status, password)
-    if (!user) return next(new ErrorHandler("Invalid user", 400))
         // vendor loggedin based on status
     // if (user.role === "vendor" &)
         // return next(new ErrorHandler("User is not active", 400))
     const isMatch = await bcrypt.compare(password, user.password)
     console.log("isMatch", isMatch)
     if (!isMatch) return next(new ErrorHandler("Invalid password", 400))
-    const token = jwt.sign({ id: user.id, role: user.role, email: user.email }, process.env.JWT_TOKEN, { expiresIn: "1d" })
+    const token = jwt.sign({ id: user.id, role: user.role, email: user.email }, process.env.JWT_TOKEN_ADMIN, { expiresIn: "1d" })
     return res.status(200).json({
         success: true,
         message: "User logged in successfully",
@@ -331,7 +329,35 @@ export const getProfile = TryCatch(async (req, res, next) => {
 
 })
 
+export const updateProfile=TryCatch(async(req,res,next)=>{
+    const id=req.user.id;
+    const {name,email,password,updatedpassword}=req.body;
+  const user = await User.findOne({
+  where: { id },
+  attributes: ['id','name', 'email', 'password'] 
+});
+    console.log("user",user);
+    console.log("password from db:", user.password);
+    if(updatedpassword && password){
+ const isMatch = await bcrypt.compare(password, user.password);     
+ 
+ if(!isMatch) return next(new ErrorHandler("that password doesn't seem right. Please check and try again."))
 
+    }
+   nodeCache.del(`Profile${id}`);
+    if(name) user.name=name;
+    if(email) user.email=email;
+   if (updatedpassword) {
+    const hashedPassword = await bcrypt.hash(updatedpassword, 10); // 👈 hash before saving
+    user.password = hashedPassword;
+}
+
+await user.save();
+    res.status(200).json({
+        success:true,
+        message:"Password Updated Successfully"
+    })
+})
 
 export const getAllUsers = TryCatch(async (req, res, next) => {
     const users = await User.findAll()

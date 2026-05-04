@@ -11,9 +11,9 @@ import { User } from "../models/user_two.js"
 export const cart = TryCatch(async (req, res, next) => {
 
     const user_id = req.user.id
-    const { product_id, quantity } = req.body
-     const product = await Product.findByPk(product_id);
-    if (!product_id || !quantity) {
+    const { slug, quantity } = req.body
+     const product = await Product.findOne({where:{slug:slug}});
+    if (!slug || !quantity) {
 
         return next(new ErrorHandler("Please provide all the required fields", 400))
     }
@@ -28,7 +28,7 @@ export const cart = TryCatch(async (req, res, next) => {
     const cart_id = cart.id
     console.log("Cart", cart_id)
     // console.log(`Request items, user_id ${user_id}, product_id ${product_id},image ${image},quantity ${quantity}, price ${price},name ${name}`)
-    const Cart_items = await Cartitems.findOne({ where: { cart_id: cart_id, product_id: product_id } })
+    const Cart_items = await Cartitems.findOne({ where: { cart_id: cart_id, product_id: product } })
     if (Cart_items) {
         Cart_items.quantity += 1;
         console.log("Cart items", Cart_items.quantity += quantity)
@@ -42,7 +42,7 @@ export const cart = TryCatch(async (req, res, next) => {
         await Cartitems.create({
             cart_id,
             quantity,
-            product_id,
+            product_id:product.id,
             seller_id:product.user_id
          
 
@@ -72,7 +72,7 @@ const sellerName=await User.findOne({where:{id:user_id}})
             name: products?.name,
             price: products?.price,
             image: products?.image,
-            seller_id:item.seller_id
+            // seller_id:item.seller_id
         };
     });
 
