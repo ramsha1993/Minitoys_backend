@@ -21,13 +21,35 @@ const app = express();
 const __dirname = path.resolve();
 import { client } from './utils/elastic.js';
 import { Product } from "./models/product_Two.js";
+import rateLimit from 'express-rate-limit'
+import helmet from 'helmet'
 
+
+
+
+
+
+
+
+
+const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100,                  // 100 requests per IP
+    message: { status: 429, error: "Too many requests, please try again later." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
 
 dotenv.config();
-app.use(cors()); // allow all origins
+app.use(cors({
+       origin: ['https://mini-toys.vercel.app/', 'https://minitoys.ae/'],
+    credentials: true
+})); // allow all origins
 app.use(express.json());
 app.use(morgan('dev'))
+app.use(helmet());
 app.use(express.urlencoded({ extended: true }))
+app.use(globalLimiter);
 const port = process.env.PORT || 4000
 // connectDb()
 
