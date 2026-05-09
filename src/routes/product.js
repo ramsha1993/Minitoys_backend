@@ -7,7 +7,7 @@ import { singleUpload ,excelUpload, cloudUpload} from "../middleware/multer.js";
 
 const app = express.Router()
 app.get("/search", searchProducts)
-app.post("/new", cloudUpload,authMiddleware, createProduct)
+app.post("/new", cloudUpload,authAdminMiddleware, createProduct)
 app.post("/bulkCreate",excelUpload,authMiddleware,bulkCreateFromExcel)
 app.get("/latest", getLatestProducts)
 app.get("/all", getAllProducts)
