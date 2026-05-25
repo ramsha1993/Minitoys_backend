@@ -32,96 +32,95 @@ dotenv.config();
 
 
 export const createProduct = TryCatch(async (req, res, next) => {
-const { name, price, stock, category_id, description } = req.body
-const user_id = req.user.id
-console.log("name, price, stock, category_id, description",name, price, stock, category_id, description)
-const photo = req.files.find(f => f.fieldname === "image")
-const additionalImage = req.files
+  const { name, price, stock, category_id, description } = req.body
+  const user_id = req.user.id
+  const photo = req.files.find(f => f.fieldname === "image")
+  const additionalImage = req.files
     .filter(f => f.fieldname === "additional_images")
     .map(f => f.path)
 
-    const product = await Product.findOne({ where: { name } })
-    
-    if (product) return next(new ErrorHandler("Product already exists", 400))
-    if (!name || !price || !stock || !category_id || !description) {
-     
-         await deleteFromCloudinary([photo?.path,...additionalImage])
-        return next(new ErrorHandler("Please enter all fields", 400))
+  const product = await Product.findOne({ where: { name } })
 
-    }
-    const newProduct = await Product.create({
-        name, price, stock, category_id, description, image: photo?.path, user_id,additional_images:additionalImage
-    })
-       console.log("newProduct",newProduct);
+  if (product) return next(new ErrorHandler("Product already exists", 400))
+  if (!name || !price || !stock || !category_id || !description) {
 
-      await client.index({
-        index: 'products',
-        id: newProduct.id,
-        body: newProduct.get({ plain: true }),
-        refresh: true
-    });
-   await InvalidateCache(products)
-    return res.status(201).json({
-        success: true,
-        message: `Product ${newProduct.name} created successfully`
-    })
+    await deleteFromCloudinary([photo?.path, ...additionalImage])
+    return next(new ErrorHandler("Please enter all fields", 400))
+
+  }
+  const newProduct = await Product.create({
+    name, price, stock, category_id, description, image: photo?.path, user_id, additional_images: additionalImage
+  })
+  console.log("newProduct", newProduct);
+
+  await client.index({
+    index: 'products',
+    id: newProduct.id,
+    body: newProduct.get({ plain: true }),
+    refresh: true
+  });
+  await InvalidateCache({ products: true });
+  return res.status(201).json({
+    success: true,
+    message: `Product ${newProduct.name} created successfully`
+  })
 
 })
 
 // Revalidate on new,update and delete product & new order & change in stock
 
 export const getLatestProducts = TryCatch(async (req, res, next) => {
-    let products = []
-    if (nodeCache.has('latestProducts')) {
-        products = JSON.parse(nodeCache.get('latestProducts'))
+  let products = []
+  if (nodeCache.has('latestProducts')) {
+    products = JSON.parse(nodeCache.get('latestProducts'))
 
-    }
-    else {
+  }
+  else {
 
-        products = await Product.findAll({
-            order: [['createdAt', 'DESC']],
-        })
+    products = await Product.findAll({
+      order: [['createdAt', 'DESC']],
+    })
 
-        nodeCache.set("latestProducts", JSON.stringify(products))
-    }
-    return res.status(200).json({
-        success: true,
-        products
-    });
+    nodeCache.set("latestProducts", JSON.stringify(products))
+  }
+  return res.status(200).json({
+    success: true,
+    products
+  });
 });
 export const updateProducts = TryCatch(async (req, res, next) => {
-    const {slug } = req.params
-    const { name, price, stock, category_id, description } = req.body
-const photo = req.files.find(f => f.fieldname === "image")
-const additionalImage = req.files
+  const { slug } = req.params
+  const { name, price, stock, category_id, description } = req.body
+  const photo = req.files.find(f => f.fieldname === "image")
+  const additionalImage = req.files
     .filter(f => f.fieldname === "additional_images")
     .map(f => f.path)
 
-    const product = await Product.findOne({where:{slug}})
-if (!product) {
-  if (photo) {
-    fs.unlink(photo.path, (err) => {
-      if (err) console.log("Error deleting uploaded image:", err)
-    })
-  }
-
-  if (additionalImage.length > 0) {
-    additionalImage.forEach(imgPath => {
-      fs.unlink(imgPath, (err) => {
-        if (err) console.log("Error deleting additional image:", err)
+  const product = await Product.findOne({ where: { slug } })
+  if (!product) {
+    if (photo) {
+      fs.unlink(photo.path, (err) => {
+        if (err) console.log("Error deleting uploaded image:", err)
       })
-    })
+    }
+
+    if (additionalImage.length > 0) {
+      additionalImage.forEach(imgPath => {
+        fs.unlink(imgPath, (err) => {
+          if (err) console.log("Error deleting additional image:", err)
+        })
+      })
+    }
+
+    return next(new ErrorHandler("Invalid product", 400))
   }
 
-  return next(new ErrorHandler("Invalid product", 400))
-}
-
-    if (name !== undefined) product.name = name
-    if (price !== undefined) product.price = price
-    if (stock !== undefined) product.stock = stock
-    if (category_id !== undefined) product.category_id = category_id
-    if (description !== undefined) product.description = description
-   if (photo !== undefined) {
+  if (name !== undefined) product.name = name
+  if (price !== undefined) product.price = price
+  if (stock !== undefined) product.stock = stock
+  if (category_id !== undefined) product.category_id = category_id
+  if (description !== undefined) product.description = description
+  if (photo !== undefined) {
     if (product.image) {
       fs.unlink(product.image, (err) => {
         if (err) console.log("Error deleting old image:", err)
@@ -135,44 +134,44 @@ if (!product) {
     product.additional_images = additionalImage
   }
 
-    await product.save()
-    await client.update({
-        index:"products",
-        id:product.id,
-        body:{
-            doc:{
-                name,
-                stock,
-                image,
-                description,
-                category_id,
-                price
-            }
-        }
-    })
-    await InvalidateCache(products)
-    return res.status(200).json({
-        success: true,
-        message: "Product updated successfully"
-    })
+  await product.save()
+  await client.update({
+    index: "products",
+    id: product.id,
+    body: {
+      doc: {
+        name,
+        stock,
+        image,
+        description,
+        category_id,
+        price
+      }
+    }
+  })
+  await InvalidateCache(products)
+  return res.status(200).json({
+    success: true,
+    message: "Product updated successfully"
+  })
 })
 
 
 export const getAdminProducts = TryCatch(async (req, res, next) => {
-    let products;
-    if (nodeCache.has("adminProducts")) {
-        products = JSON.parse(nodeCache.get("adminProducts"))
-        console.log("Key Exists")
-    }
-    else {
-        products = await Product.findAll()
-        console.log("Key Not Exists")
-        nodeCache.set("adminProducts", JSON.stringify(products))
-    }
-    return res.status(200).json({
-        success: true,
-        products
-    })
+  let products;
+  if (nodeCache.has("adminProducts")) {
+    products = JSON.parse(nodeCache.get("adminProducts"))
+    console.log("Key Exists")
+  }
+  else {
+    products = await Product.findAll()
+    console.log("Key Not Exists")
+    nodeCache.set("adminProducts", JSON.stringify(products))
+  }
+  return res.status(200).json({
+    success: true,
+    products
+  })
 })
 
 
@@ -190,7 +189,7 @@ export const getAdminProducts = TryCatch(async (req, res, next) => {
 //   const errors   = [];
 //   const categories=await Category.findAll({})
 //   const products = rows.map((row, i) => {
-   
+
 //     const rowNum = i + 2; // +2 because row 1 is header
 //     const categoryName = row.category ? String(row.category).toLowerCase().trim() : "";
 // const category=categories.find((e)=>e.name.toLowerCase()== categoryName)
@@ -222,8 +221,8 @@ export const getAdminProducts = TryCatch(async (req, res, next) => {
 //   const transaction = await sequelize.transaction();
 //   try {
 //     const result = await Product.bulkCreate(products, { transaction });
-    
-    
+
+
 //     const bulkBody=result.flatMap(product=>[
 //        { index:{_index:'products',_id:product.id}},
 //         product.get({plain:true})
@@ -235,7 +234,7 @@ export const getAdminProducts = TryCatch(async (req, res, next) => {
 //     })
 //   if(response.errors){
 //     const failedItems= response.items.filter((item,i)=>item.index?.error).map((item)=>item.index._id)
-  
+
 //       const successfullItems= response.items.filter((item,i)=>!item.index?.error).map((item)=>item.index._id)
 //     const deleteBody = result
 //     .filter(p => successfullItems.includes(String(p.id))).flatMap(product => [
@@ -247,7 +246,7 @@ export const getAdminProducts = TryCatch(async (req, res, next) => {
 //         }
 //          await transaction.rollback();
 //    return res.status(500).json({ error: 'OpenSearch indexing failed' });
-     
+
 // }
 
 // await transaction.commit();
@@ -381,17 +380,18 @@ export const bulkCreateFromCSV = TryCatch(async (req, res) => {
   try {
     // 1. Parse
     let rows;
-    try { rows = await parseCSV(filePath); 
-console.log("rows:", rows);  
-console.log("rows length:", rows.length); 
+    try {
+      rows = await parseCSV(filePath);
+      console.log("rows:", rows);
+      console.log("rows length:", rows.length);
     }
- catch (err) {  //  add err
-  console.error("CSV parse error:", err);
-  return res.status(400).json({ error: "Failed to parse CSV file." });
-}
+    catch (err) {  //  add err
+      console.error("CSV parse error:", err);
+      return res.status(400).json({ error: "Failed to parse CSV file." });
+    }
 
     // 2. Row-count guards
-    if (!rows.length )        return res.status(400).json({ error: "CSV file is empty." });
+    if (!rows.length) return res.status(400).json({ error: "CSV file is empty." });
     if (rows.length > MAX_ROWS) return res.status(400).json({ error: `CSV exceeds the ${MAX_ROWS}-row limit (got ${rows.length}).` });
 
     // 3. Load reference data in parallel
@@ -407,7 +407,7 @@ console.log("rows length:", rows.length);
     // 5. Persist
     const transaction = await sequelize.transaction();
     try {
-      const result  = await Product.bulkCreate(
+      const result = await Product.bulkCreate(
         products.map((p) => ({ ...p, user_id: req.user.id })),
         { transaction }
       );
@@ -417,19 +417,19 @@ console.log("rows length:", rows.length);
         return res.status(500).json({ error: "OpenSearch indexing failed." });
       }
       await transaction.commit();
-     await InvalidateCache(products)
-          cleanupFile(filePath);
+      await InvalidateCache(products)
+      cleanupFile(filePath);
       return res.status(201).json({ message: `${result.length} products created successfully.`, data: result });
     } catch (err) {
       await transaction.rollback();
       return res.status(400).json({ error: err.message });
     }
 
-  } 
+  }
   catch (err) {
-// handle and respond
-await cleanupFile(filePath); // explicit cleanup on error path
-return res.status(400).json({ error: err.message });
+    // handle and respond
+    await cleanupFile(filePath); // explicit cleanup on error path
+    return res.status(400).json({ error: err.message });
   }
   finally {
     cleanupFile(filePath);
@@ -439,110 +439,110 @@ return res.status(400).json({ error: err.message });
 
 
 export const getAllProducts = TryCatch(async (req, res, next) => {
-    const { name, category } = req.query
-    const page = Number(req.query.page) || 1
-    const limit = Number(process.env.PRODUCT_PER_PAGE) || 8
-    const skip = (page - 1) * limit
-    const baseQuery = {}
+  const { name, category } = req.query
+  const page = Number(req.query.page) || 1
+  const limit = Number(process.env.PRODUCT_PER_PAGE) || 8
+  const skip = (page - 1) * limit
+  const baseQuery = {}
 
-    if (name) {
+  if (name) {
 
-        baseQuery[Op.or] = [
-            { name: { [Op.like]: `%${name}%` } },
-            { description: { [Op.like]: `%${name}%` } }
-        ]
-    }
+    baseQuery[Op.or] = [
+      { name: { [Op.like]: `%${name}%` } },
+      { description: { [Op.like]: `%${name}%` } }
+    ]
+  }
 
-    if (category) {
-        baseQuery.category_id = category
-    }
-    // if (price) {
-    //     baseQuery.price = { [Op.lte]: price }
-    // }
-    const sortOrder = req.query.sort === 'sort' ? 'high-to-low' : 'ASC';
+  if (category) {
+    baseQuery.category_id = category
+  }
+  // if (price) {
+  //     baseQuery.price = { [Op.lte]: price }
+  // }
+  const sortOrder = req.query.sort === 'sort' ? 'high-to-low' : 'ASC';
 
-    const products = await Product.findAndCountAll({
-        where: baseQuery,
-        limit: limit, offset: skip,
-        order: [['price', sortOrder]],
-        attributes:["name","price","slug","stock","image","additional_images","description"]
-    })
-    console.log("get products", products.rows)
-    return res.status(200).json({
+  const products = await Product.findAndCountAll({
+    where: baseQuery,
+    limit: limit, offset: skip,
+    order: [['price', sortOrder]],
+    attributes: ["name", "price", "slug", "stock", "image", "additional_images", "description"]
+  })
+  console.log("get products", products.rows)
+  return res.status(200).json({
 
-        success: true,
-        products: products.rows,
-        sortOrder,
-        totalProducts: products.count,
-        currentPage: page,
-        totalPages: Math.ceil(products.count / limit)
-    })
+    success: true,
+    products: products.rows,
+    sortOrder,
+    totalProducts: products.count,
+    currentPage: page,
+    totalPages: Math.ceil(products.count / limit)
+  })
 })
 
 export const deleteProducts = TryCatch(async (req, res, next) => {
-    const { id } = req.params
-    const product = await Product.findByPk(id)
-    if (!product) return next(new ErrorHandler("Invalid product", 400))
-      const imagesToDelete = [
-        product.image,                        // main image
-        ...(product.additional_images || [])  // additional images
-    ];
-     console.log("product.image",[
-        product.image,                        // main image
-        ...(product.additional_images || [])  // additional images
-    ])
-    await product.destroy()
-   try {
-        const response = await client.delete({
-            index: 'products',
-            id: product.id,
-            refresh: true
-        });
-       
-        console.log("ES deleted", response);
-    } catch (searchError) {
-        console.error("ES delete failed:", searchError.message);
-    }
+  const { id } = req.params
+  const product = await Product.findByPk(id)
+  if (!product) return next(new ErrorHandler("Invalid product", 400))
+  const imagesToDelete = [
+    product.image,                        // main image
+    ...(product.additional_images || [])  // additional images
+  ];
+  console.log("product.image", [
+    product.image,                        // main image
+    ...(product.additional_images || [])  // additional images
+  ])
+  await product.destroy()
+  try {
+    const response = await client.delete({
+      index: 'products',
+      id: product.id,
+      refresh: true
+    });
 
-    // delete from Cloudinary
-    await deleteFromCloudinary(imagesToDelete);
+    console.log("ES deleted", response);
+  } catch (searchError) {
+    console.error("ES delete failed:", searchError.message);
+  }
 
-    InvalidateCache(product)
-    return res.status(200).json({
-        success: true,
-        message: "Product deleted successfully"
-    })
+  // delete from Cloudinary
+  await deleteFromCloudinary(imagesToDelete);
+
+  InvalidateCache(product)
+  return res.status(200).json({
+    success: true,
+    message: "Product deleted successfully"
+  })
 })
 
 export const getSingleProduct = TryCatch(async (req, res, next) => {
-    let product;
-    let seller_name;
-    let seller_id;
-    const { slug } = req.params
-    if (nodeCache.has(`product-${slug}`)) {
-        product = JSON.parse(nodeCache.get(`product-${slug}`))
-    }
-    else {
-        product = await Product.findOne({ where: { slug } })
-        nodeCache.set(`product-${slug}`, JSON.stringify(product))
-    }
-            console.log("product",product)
-        const user_id = product?.dataValues?.user_id || product?.user_id;
-        console.log("userid",user_id)
-        const user = await User.findOne({ where: { id: user_id } });
-        console.log("user",user)
-         seller_name =user?.dataValues?.name 
-         seller_id=user_id
-         console.log("seller_name",seller_name)
-         console.log("seller_id",seller_id)
-    if (!product) return next(new ErrorHandler("Invalid product", 400))
-    return res.status(200).json({
-        success: true,
-        product,
-        sellerName:seller_name,
-        seller_id:seller_id
-        
-    })
+  let product;
+  let seller_name;
+  let seller_id;
+  const { slug } = req.params
+  if (nodeCache.has(`product-${slug}`)) {
+    product = JSON.parse(nodeCache.get(`product-${slug}`))
+  }
+  else {
+    product = await Product.findOne({ where: { slug } })
+    nodeCache.set(`product-${slug}`, JSON.stringify(product))
+  }
+  console.log("product", product)
+  const user_id = product?.dataValues?.user_id || product?.user_id;
+  console.log("userid", user_id)
+  const user = await User.findOne({ where: { id: user_id } });
+  console.log("user", user)
+  seller_name = user?.dataValues?.name
+  seller_id = user_id
+  console.log("seller_name", seller_name)
+  console.log("seller_id", seller_id)
+  if (!product) return next(new ErrorHandler("Invalid product", 400))
+  return res.status(200).json({
+    success: true,
+    product,
+    sellerName: seller_name,
+    seller_id: seller_id
+
+  })
 })
 
 
@@ -551,40 +551,44 @@ export const getSingleProduct = TryCatch(async (req, res, next) => {
 
 
 export const searchProducts = TryCatch(async (req, res) => {
-    const { q } = req.query;
-    console.log("Query",q)
+  const { q } = req.query;
+  console.log("Query", q)
 
-    if (!q) return res.json([]);
+  if (!q) return res.json([]);
 
-    try {
-        const result = await client.search({
-            index: "products",
-         body:{query: {multi_match: { // multi_match is better than match
-                        query: q,
-                        fields: ["name", "description"], // Search in both name and description
-                        fuzziness: "AUTO" // Handles typos!
-                    } }},
-            size: 10
-        });
-        console.log("result", result)
-        const hits = result.body.hits.hits;
-        console.log("hits",hits)
-     const suggestions = hits.map(hit => ({
-    name: hit._source.name,
-    slug: hit._source.slug,
-    price: hit._source.price,
-    image: hit._source.image,
-    stock: hit._source.stock > 0, // ✅ just boolean, not actual count
-}));
-        return res.status(200).json({
-            success: true,
-            message: "Search query",
-            suggestions
-        })
-    } catch (err) {
-        console.error(err);
-        res.status(500).json(err);
-    }
+  try {
+    const result = await client.search({
+      index: "products",
+      body: {
+        query: {
+          multi_match: { // multi_match is better than match
+            query: q,
+            fields: ["name", "description"], // Search in both name and description
+            fuzziness: "AUTO" // Handles typos!
+          }
+        }
+      },
+      size: 10
+    });
+    console.log("result", result)
+    const hits = result.body.hits.hits;
+    console.log("hits", hits)
+    const suggestions = hits.map(hit => ({
+      name: hit._source.name,
+      slug: hit._source.slug,
+      price: hit._source.price,
+      image: hit._source.image,
+      stock: hit._source.stock > 0, // ✅ just boolean, not actual count
+    }));
+    return res.status(200).json({
+      success: true,
+      message: "Search query",
+      suggestions
+    })
+  } catch (err) {
+    console.error(err);
+    res.status(500).json(err);
+  }
 });
 
 

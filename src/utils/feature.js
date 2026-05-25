@@ -3,30 +3,17 @@ import { Product } from "../models/product_Two.js"
 import ErrorHandler from "./utilityclass.js";
 
 
-export const InvalidateCache = async (products, orders, admin, category) => {
-    console.log("Passed arguments:", { products, orders, admin, category }); // DEBUG LOG
+export const InvalidateCache = async ({ products, orders, admin, category }) => {
+    console.log("Passed arguments:", { products, orders, admin, category });
+
     if (products) {
-        const ProductCacheKeys = ["latestProducts", "adminProducts"]
-        const Prdouct_id = await Product.findAll({
-            attributes: ['id'],
-            raw: true
-        })
-        console.log("ID", Prdouct_id)
-        Prdouct_id.forEach((i) => {
-            ProductCacheKeys.push(`product-${i.id}`)
-            console.log("ProductCacheKeys deleted", ProductCacheKeys)
-        })
-
-
-        nodeCache.del(ProductCacheKeys)
+        const ProductCacheKeys = ["latestProducts", "adminProducts"];
+        nodeCache.del(ProductCacheKeys);
         console.log("Verification - Does adminProducts still exist?:", nodeCache.has("adminProducts"));
+    } else {
+        console.log("Cache invalidation skipped or conditions not met");
     }
-    else {
-        console.log("func not working ")
-    }
-
-
-}
+};
 
 export const ReduceStock = async (OrderItems) => {
 
