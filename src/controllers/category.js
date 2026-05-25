@@ -27,7 +27,8 @@ export const deleteCategoryImage = TryCatch(async (req, res, next) => {
                 fs.unlinkSync(imagePath)
             }
             await category.update({image:null});
-            nodeCache.del("categories");
+              nodeCache.del("categories");
+              nodeCache.del("Admincategories")
     return res.status(200).json({
         success: true,
         message: "Category deleted successfully"
@@ -50,6 +51,7 @@ export const createCategory = TryCatch(async (req, res, next) => {
     const category = await Category.create({ name,image })
         // ✅ CLEAR CACHE after create
     nodeCache.del("categories");
+    nodeCache.del("Admincategories");
     return res.status(201).json({
         success: true,
         message: `Category ${category.name} created successfully`
@@ -76,15 +78,17 @@ export const getAllCategories = TryCatch(async (req, res, next) => {
 
 export const getAdminCategories=TryCatch(async (req, res, next) => {
     let categories;
-    if (nodeCache.has("categories")) {
-        categories = JSON.parse(nodeCache.get("categories"))
+    if (nodeCache.has("Admincategories")) {
+        categories = JSON.parse(nodeCache.get("Admincategories"))
+        console.log("cache categories",categories);
     }
 
     else {
         categories = await Category.findAll({
-            attributes:['id','name','image',]
+            attributes:['id','name','image']
         })
-        nodeCache.set("categories", JSON.stringify(categories))
+        nodeCache.set("Admincategories", JSON.stringify(categories))
+
     }
     return res.status(200).json({
         success: true,
@@ -128,7 +132,8 @@ export const deleteCategory = TryCatch(async (req, res, next) => {
     const category = await Category.findByPk(id)
     if (!category) return next(new ErrorHandler("Invalid category", 400))
     await category.destroy()
- nodeCache.del("categories");
+    nodeCache.del("categories");
+    nodeCache.del("Admincategories");
     return res.status(200).json({
         success: true,
         message: "Category deleted successfully"

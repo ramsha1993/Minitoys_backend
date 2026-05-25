@@ -30,23 +30,32 @@ const cloudStorageCategory=new CloudinaryStorage({
      }
 })
 
-const excelStorage=multer.diskStorage({
-    destination:'uploads/excel/',
-    filename:(req,file,cb)=>cb(null,`products_${Date.now()}.xlsx`)
-})
+// const excelStorage=multer.diskStorage({
+//     destination:'uploads/excel/',
+//     filename:(req,file,cb)=>cb(null,`products_${Date.now()}.xlsx`)
+// })
+const csvStorage = multer.diskStorage({
+  destination: "uploads/csv/",
+  filename: (req, file, cb) => {
+    cb(null, `products_${Date.now()}.csv`);
+  },
+});
 
 
 export const singleUpload = multer({ storage }).any();
 export const cloudUpload=multer({storage:cloudStorage}).any()
 export const cloudSingleUpload=multer({storage:cloudStorageCategory}).single("image")
-export const excelUpload=multer({storage:excelStorage,
-     fileFilter: (req, file, cb) => {
+export const csvUpload = multer({
+  storage: csvStorage,
+  fileFilter: (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    if (!['.xlsx', '.xls'].includes(ext)) {
-      return cb(new Error('Only Excel files allowed'));
+    const isCsv = ext === ".csv" && file.mimetype === "text/csv";
+    if (!isCsv) {
+      return cb(new Error("Only CSV files are allowed"));
     }
     cb(null, true);
   },
-}).single("file")
+  limits: { fileSize: 10 * 1024 * 1024 },
+}).single("file");
 
 export const singleFileUpload=multer({storage}).single("image")

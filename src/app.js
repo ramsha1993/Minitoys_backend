@@ -42,8 +42,8 @@ const globalLimiter = rateLimit({
 
 dotenv.config();
 app.use(cors({
-       origin: ['https://mini-toys.vercel.app/', 'https://minitoys.ae','https://admin.minitoys.ae'],
-    credentials: true
+    //    origin: ['https://mini-toys.vercel.app/', 'https://minitoys.ae','https://admin.minitoys.ae'],
+    // credentials: true
 })); // allow all origins
 app.use(express.json());
 app.use(morgan('dev'))
