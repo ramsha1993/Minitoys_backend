@@ -42,9 +42,10 @@ const globalLimiter = rateLimit({
 
 dotenv.config();
 app.use(cors({
-    //    origin: ['https://mini-toys.vercel.app/', 'https://minitoys.ae','https://admin.minitoys.ae'],
-    // credentials: true
-})); // allow all origins
+    origin: ['https://mini-toys.vercel.app/', 'https://minitoys.ae', 'https://admin.minitoys.ae'],
+    credentials: true
+}));
+// allow all origins
 app.use(express.json());
 app.use(morgan('dev'))
 app.use(helmet());
@@ -72,7 +73,7 @@ async function testElastic() {
 // async function insertProducts() {
 //     try {
 //         const products = await Product.findAll({});
-        
+
 //         // Map products to the "Action/Metadata" + "Source" pairs OpenSearch needs
 //         const bulkBody = products.flatMap(product => [
 //             { index: { _index: 'products', _id: product.id } },
